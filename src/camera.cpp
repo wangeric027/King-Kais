@@ -56,6 +56,12 @@ void Camera::initProjMatrix(){
     projMatrix = shift * unhinge * perspective;
 }
 
+void Camera::setPlanes(float nearPlaneData, float farPlaneData) {
+    nearPlane = nearPlaneData;
+    farPlane = farPlaneData;
+    initProjMatrix();
+}
+
 glm::mat4 Camera::getViewMatrix() const {
     return viewMatrix;
 }

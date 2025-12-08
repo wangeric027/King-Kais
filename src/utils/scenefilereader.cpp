@@ -587,6 +587,15 @@ bool ScenefileReader::parseGroupData(const QJsonObject &object, SceneNode *node)
         }
     }
 
+    if (object.contains("name")) {
+        if (!object["name"].isString()) {
+            std::cout << "group name must be string" << std::endl;
+            return false;
+        }
+        std::string name = object["name"].toString().toStdString();
+        node->name = name;
+    }
+
     // parse translation if defined
     if (object.contains("translate")) {
         if (!object["translate"].isArray()) {

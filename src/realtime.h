@@ -18,12 +18,15 @@
 #include "trimesh/Cube.h"
 #include "trimesh/Sphere.h"
 #include "trimesh/Cylinder.h"
+#include "rigidbody.h"
 
 
 struct RealtimeShapeInfo {
     int shapeType; // 0 = Cube, 1 = Cone, 2 = Cylinder, 3 = Sphere
     glm::mat4 ctm;
     SceneMaterial material;
+    std::string groupName;
+    RigidBody rigidBody;
 };
 
 class Realtime : public QOpenGLWidget
@@ -34,6 +37,7 @@ public:
     void sceneChanged();
     void settingsChanged();
     void saveViewportImage(std::string filePath);
+    void reLoad();
 
 public slots:
     void tick(QTimerEvent* event);                      // Called once per tick of m_timer
@@ -74,6 +78,8 @@ private:
     int numTriangles;
 
     std::vector<RealtimeShapeInfo> realtimeShapeList;
+    RealtimeShapeInfo* m_planet;
+    RealtimeShapeInfo* m_player;
     std::vector<SceneLightData> sceneLightData;
     SceneGlobalData globals;
 
@@ -84,6 +90,11 @@ private:
     GLuint vaoList[4];
     GLuint m_fullscreen_vbo;
     GLuint m_fullscreen_vao;
+    Cube cube;
+    Sphere sphere;
+    Cylinder cylinder;
+    Cone cone;
+    RenderData metaData;
     int sizeList[4];
     void createImage();
     void geometryPass();
@@ -91,6 +102,7 @@ private:
     void depthTest();
     void fogTest();
     void geoTest(int buffer);
+    void alignToPlanetGravity();
 
     glm::mat4 projMatrix;
     glm::mat4 viewMatrix;

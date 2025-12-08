@@ -52,6 +52,8 @@ add_executable(${PROJECT_NAME}
     src/trimesh//Cylinder.h
     src/trimesh//Sphere.h
     src/camera.h
+    src/rigidbody.h src/rigidbody.cpp
+
 )
 
 # GLM: this creates its library and allows you to `#include "glm/..."`

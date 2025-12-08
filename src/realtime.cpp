@@ -6,8 +6,13 @@
 #include <iostream>
 #include "settings.h"
 #include "utils/shaderloader.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 // ================== Rendering the Scene!
+
+float objSpaceSphereRadius = 0.5f;
+float moveSpeed = 1.0f;
+float rotationAngle = glm::radians(7.5f);
 
 Realtime::Realtime(QWidget *parent)
     : QOpenGLWidget(parent)
@@ -24,6 +29,11 @@ Realtime::Realtime(QWidget *parent)
     m_keyMap[Qt::Key_Space]   = false;
 
     // If you must use this function, do not edit anything above this
+
+    m_keyMap[Qt::Key_Left] = false;
+    m_keyMap[Qt::Key_Right] = false;
+    m_keyMap[Qt::Key_Up] = false;
+    m_keyMap[Qt::Key_Down] = false;
 }
 
 void Realtime::finish() {
@@ -46,7 +56,6 @@ void Realtime::createImage(){
     glGenVertexArrays(4, vaoList);
 
 
-    RenderData metaData;
     SceneParser::parse(settings.sceneFilePath, metaData);
     sceneLightData = metaData.lights;
     globals = metaData.globalData;
@@ -66,22 +75,18 @@ void Realtime::createImage(){
         std::vector<GLfloat> shapeVertexData;
         switch (i) {
             case 0: {
-                Cube cube;
                 cube.updateParams(settings.shapeParameter1);
                 shapeVertexData = cube.generateShape();
             } break;
             case 1: {
-                Cone cone;
                 cone.updateParams(settings.shapeParameter1, settings.shapeParameter2);
                 shapeVertexData = cone.generateShape();
             } break;
             case 2: {
-                Cylinder cylinder;
                 cylinder.updateParams(settings.shapeParameter1, settings.shapeParameter2);
                 shapeVertexData = cylinder.generateShape();
             } break;
             case 3: {
-                Sphere sphere;
                 sphere.updateParams(settings.shapeParameter1, settings.shapeParameter2);
                 shapeVertexData = sphere.generateShape();
             }
@@ -108,13 +113,34 @@ void Realtime::createImage(){
     // Just need to store each CTM with their shapeType
     for (RenderShapeData &shape: metaData.shapes){
         int enumAsInt = static_cast<int>(shape.primitive.type);
-        RealtimeShapeInfo shapeInfo = RealtimeShapeInfo{enumAsInt, shape.ctm, shape.primitive.material};
+        RealtimeShapeInfo shapeInfo = RealtimeShapeInfo{enumAsInt, shape.ctm, shape.primitive.material, shape.name};
+        glm::vec3 initialPos = shapeInfo.ctm[3];
+        if (shapeInfo.groupName == "Player") {
+            shapeInfo.rigidBody.setMass(1.0f);
+            shapeInfo.rigidBody.position = initialPos;
+        } else if (shapeInfo.groupName == "Planet") {
+            shapeInfo.rigidBody.setMass(10000000.f);
+            shapeInfo.rigidBody.isStatic = true;
+            shapeInfo.rigidBody.position = initialPos;
+        } else {
+            shapeInfo.rigidBody.setMass(0.0f);
+            shapeInfo.rigidBody.position = initialPos;
+        }
+        std::cout << shapeInfo.groupName << std::endl;
         realtimeShapeList.push_back(shapeInfo);
     }
 
+    for (RealtimeShapeInfo &shapeInfo: realtimeShapeList) {
+        if (shapeInfo.groupName == "Player") {
+            m_player = &shapeInfo;
+        }
+        if (shapeInfo.groupName == "Planet") {
+            m_planet= &shapeInfo;
+        }
+
+    }
 
     //we now have a list of all shapes with their ctm, and vertices
-
     createFBO();
 
 }
@@ -414,11 +440,11 @@ void Realtime::paintGL() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     geometryPass();
-    //shadingPass();
+    shadingPass();
 
     //depthTest();
     //fogTest();
-    geoTest(3);
+    // geoTest(3);
 
     glBindVertexArray(0);
     glUseProgram(0);
@@ -436,8 +462,58 @@ void Realtime::sceneChanged() {
     update(); // asks for a PaintGL() call to occur
 }
 
+void Realtime::reLoad() {
+    if (settings.shapeParameter1 < 2){
+        settings.shapeParameter1 = 2;
+    }
+    if (settings.shapeParameter2 < 3){
+        settings.shapeParameter2 = 3;
+    }
+
+    cam.setPlanes(settings.nearPlane, settings.farPlane);
+
+    for (int i = 0; i < 4; i++){
+        //binds the VBO and inserts its corresponding vertex information
+        glBindBuffer(GL_ARRAY_BUFFER, vboList[i]);
+        std::vector<GLfloat> shapeVertexData;
+        switch (i) {
+        case 0: {
+            cube.updateParams(settings.shapeParameter1);
+            shapeVertexData = cube.generateShape();
+        } break;
+        case 1: {
+            cone.updateParams(settings.shapeParameter1, settings.shapeParameter2);
+            shapeVertexData = cone.generateShape();
+        } break;
+        case 2: {
+            cylinder.updateParams(settings.shapeParameter1, settings.shapeParameter2);
+            shapeVertexData = cylinder.generateShape();
+        } break;
+        case 3: {
+            sphere.updateParams(settings.shapeParameter1, settings.shapeParameter2);
+            shapeVertexData = sphere.generateShape();
+        }
+        break;
+        }
+        //Initialize our VBO with vertex info for a shape. Store the # of triangles in sizeList, since DrawArrays will need to know how many to draw
+        sizeList[i] = shapeVertexData.size() / 8;
+        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * shapeVertexData.size(), shapeVertexData.data(), GL_STATIC_DRAW);
+        //Creates my VAO and binds it
+        glBindVertexArray(vaoList[i]);
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), nullptr);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,  8 * sizeof(GLfloat), reinterpret_cast<void*>(3 * sizeof(GLfloat)));
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE,  8 * sizeof(GLfloat), reinterpret_cast<void*>(6 * sizeof(GLfloat)));
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+}
+
 void Realtime::settingsChanged() {
-    if (m_glInitialized) createImage();
+    if (m_glInitialized) reLoad();
     update(); // asks for a PaintGL() call to occur
 
 }
@@ -476,25 +552,220 @@ void Realtime::mouseMoveEvent(QMouseEvent *event) {
 
         cam.rotateCam(deltaX,deltaY);
 
-
-
         // Use deltaX and deltaY here to rotate
 
         update(); // asks for a PaintGL() call to occur
     }
 }
 
+glm::vec3 applyPlanetGravity(RigidBody& player, RigidBody& planet) {
+    const float G = 0.000016f;
+    glm::vec3 r_vec = planet.position - player.position;
+
+    // 2. Calculate distance squared (r^2)
+    float r_sq = glm::dot(r_vec, r_vec);
+
+    // Prevent division by zero and excessive forces when too close
+    const float MIN_DIST_SQ = 0.1f;
+    if (r_sq < MIN_DIST_SQ) {
+        r_sq = MIN_DIST_SQ;
+    }
+
+    // 3. Calculate the magnitude of the force (F = G * m1 * m2 / r^2)
+    float F_mag = G * player.mass * planet.mass / r_sq;
+
+    // 4. Calculate the unit direction vector (from player to planet)
+    glm::vec3 r_hat = glm::normalize(r_vec);
+
+    // 5. Calculate the final force vector
+    glm::vec3 F = F_mag * r_hat;
+
+    return F;
+}
+
+void handleCollision(RigidBody& player, RigidBody& planet, float worldRadius) {
+    glm::vec3 r_vec = player.position - planet.position;
+    float dist = glm::length(r_vec);
+
+    const float epsilon = 0.1f;
+    float targetDist = worldRadius + epsilon;
+
+    if (dist < targetDist) {
+        // Calculate the radial direction (from planet center to player)
+        glm::vec3 radialDir = glm::normalize(r_vec);
+
+        // Snap player to the correct distance from planet center
+        player.position = planet.position + radialDir * targetDist;
+
+        // Decompose velocity into radial and tangential components
+        float radialVelocity = glm::dot(player.velocity, radialDir);
+        glm::vec3 radialComponent = radialDir * radialVelocity;
+        glm::vec3 tangentialComponent = player.velocity - radialComponent;
+
+        // Only cancel the radial component if moving into the planet
+        if (radialVelocity < 0.0f) {
+            player.velocity = tangentialComponent;
+        }
+
+        // // Optional: Apply friction to tangential movement
+        // float frictionCoefficient = 0.98f; // 0.98 = very little friction, 0.9 = more friction
+        // player.velocity *= frictionCoefficient;
+    }
+}
+
+void movePlayer(int key, RealtimeShapeInfo* player, RealtimeShapeInfo* planet) {
+    // Extract the local Forward axis from the player's CTM (Z-axis column)
+    glm::vec3 localForward = glm::normalize(glm::vec3(player->ctm[2][0], player->ctm[2][1], player->ctm[2][2]));
+
+    glm::vec3 moveDirection(0.0f);
+
+    switch (key) {
+    case Qt::Key_Up: // Move Forward in local space
+        moveDirection = localForward * moveSpeed;
+        break;
+    case Qt::Key_Down: // Move Backward in local space
+        moveDirection = -localForward * moveSpeed;
+        break;
+    default:
+        return;
+    }
+
+    glm::vec3 toPlanet = glm::normalize(player->rigidBody.position - planet->rigidBody.position);
+    float radialVel = glm::dot(player->rigidBody.velocity, toPlanet);
+    glm::vec3 radialComponent = toPlanet * radialVel;
+
+    // Set tangential velocity directly, preserve radial (gravity) component
+    glm::vec3 newTangentialVel = moveDirection * moveSpeed;
+    player->rigidBody.velocity = radialComponent + newTangentialVel;
+}
+
+void rotatePlayer(int key, RealtimeShapeInfo* player) {
+    glm::vec3 localUp = glm::normalize(glm::vec3(player->ctm[1][0], player->ctm[1][1], player->ctm[1][2]));
+
+    switch (key) {
+    case Qt::Key_Left:
+        player->ctm = glm::rotate(player->ctm, -rotationAngle, localUp);
+        break;
+    case Qt::Key_Right:
+        player->ctm = glm::rotate(player->ctm, rotationAngle, localUp);
+        break;
+    default:
+        break;
+    }
+}
+
+void stopPlayerMovement(RealtimeShapeInfo* player, RealtimeShapeInfo* planet) {
+    glm::vec3 toPlanet = glm::normalize(player->rigidBody.position - planet->rigidBody.position);
+    float radialVel = glm::dot(player->rigidBody.velocity, toPlanet);
+    glm::vec3 radialComponent = toPlanet * radialVel;
+
+    player->rigidBody.velocity = radialComponent;
+}
+
+void Realtime::alignToPlanetGravity() {
+    glm::vec3 playerPos = m_player->rigidBody.position;
+    glm::vec3 planetPos = m_planet->rigidBody.position;
+
+    // 1. Calculate the required Up Vector (pointing away from planet)
+    glm::vec3 upVectorRequired = glm::normalize(playerPos - planetPos);
+
+    // 2. Extract current CTM and decompose scale
+    glm::mat4 currentCTM = m_player->ctm;
+    float scaleX = glm::length(glm::vec3(currentCTM[0]));
+    float scaleY = glm::length(glm::vec3(currentCTM[1]));
+    float scaleZ = glm::length(glm::vec3(currentCTM[2]));
+
+    // Extract normalized current forward axis (without scale)
+    glm::vec3 currentForward = glm::normalize(glm::vec3(currentCTM[2]));
+
+    // 3. Project current forward onto the plane perpendicular to upVectorRequired
+    glm::vec3 targetForward = currentForward - glm::dot(currentForward, upVectorRequired) * upVectorRequired;
+
+    // Handle edge case where forward is parallel to up
+    if (glm::length(targetForward) < 0.001f) {
+        // Choose an arbitrary perpendicular direction
+        glm::vec3 arbitrary = glm::abs(upVectorRequired.x) < 0.9f ?
+                                  glm::vec3(1.0f, 0.0f, 0.0f) :
+                                  glm::vec3(0.0f, 1.0f, 0.0f);
+        targetForward = glm::cross(upVectorRequired, arbitrary);
+    }
+    targetForward = glm::normalize(targetForward);
+
+    // 4. Build orthonormal basis using cross products
+    // Right = Forward × Up
+    glm::vec3 newRight = glm::normalize(glm::cross(targetForward, upVectorRequired));
+
+    // Recompute Forward = Up × Right (ensures perfect orthogonality)
+    glm::vec3 newForward = glm::normalize(glm::cross(upVectorRequired, newRight));
+
+    // 5. Apply scale to the axes
+    glm::vec3 scaledRight = newRight * scaleX;
+    glm::vec3 scaledUp = upVectorRequired * scaleY;
+    glm::vec3 scaledForward = newForward * scaleZ;
+
+    // 6. Construct the new rotation matrix with proper basis vectors
+    glm::mat4 newCTM = glm::mat4(1.0f);
+    newCTM[0] = glm::vec4(scaledRight, 0.0f);      // X-axis (right)
+    newCTM[1] = glm::vec4(scaledUp, 0.0f);         // Y-axis (up)
+    newCTM[2] = glm::vec4(scaledForward, 0.0f);    // Z-axis (forward)
+    newCTM[3] = currentCTM[3];                      // Preserve translation
+
+    // 7. Verify the determinant is positive (correct winding order)
+    glm::mat3 rotPart = glm::mat3(newCTM);
+    float det = glm::determinant(rotPart);
+
+    // If determinant is negative, we have a reflection - flip one axis
+    if (det < 0.0f) {
+        newCTM[0] = -newCTM[0];  // Flip right axis to fix winding
+    }
+
+    m_player->ctm = newCTM;
+}
+
 void Realtime::timerEvent(QTimerEvent *event) {
     int elapsedms   = m_elapsedTimer.elapsed();
     float deltaTime = elapsedms * 0.001f;
+    bool isMovingPlayer = false;
     m_elapsedTimer.restart();
     for (const auto &entry : m_keyMap) {
         Qt::Key key = entry.first;
-        if (entry.second){
+        if (entry.second) {
             cam.move(static_cast<int>(key));
+            rotatePlayer(key, m_player);
+            if (key == Qt::Key_Up || key == Qt::Key_Down) {
+                isMovingPlayer = true;
+                movePlayer(key, m_player, m_planet);
+            }
         }
     }
+    if (settings.extraCredit1) {
+        glm::vec3 F_planet = applyPlanetGravity(m_player->rigidBody, m_planet->rigidBody);
 
+        m_player->rigidBody.applyForce(F_planet);
+        for (auto &shapeData : realtimeShapeList)
+        {
+            if (!isMovingPlayer) {
+                stopPlayerMovement(m_player, m_planet);
+            }
+            if (shapeData.rigidBody.isStatic) {
+                continue;
+            }
+
+            shapeData.rigidBody.integrate(deltaTime);
+
+            if (shapeData.groupName == "Player") {
+                float sphereRadiusWorld = objSpaceSphereRadius * m_planet->ctm[0][0];
+                handleCollision(shapeData.rigidBody, m_planet->rigidBody, sphereRadiusWorld);
+                alignToPlanetGravity();
+            }
+
+            const glm::vec3& newPos = shapeData.rigidBody.position;
+
+            shapeData.ctm[3][0] = newPos.x;
+            shapeData.ctm[3][1] = newPos.y;
+            shapeData.ctm[3][2] = newPos.z;
+        }
+    }
     update(); // asks for a PaintGL() call to occur
 }
 

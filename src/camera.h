@@ -39,6 +39,7 @@ public:
     glm::mat4 getProjMatrix() const;
     void move(int key);
     void rotateCam(float deltaX, float deltaY);
+    void setPlanes(float nearPlaneData, float farPlaneData);
 private:
     void calculateVectors();
     float aspectRatio;

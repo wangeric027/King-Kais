@@ -55,7 +55,7 @@ void SceneParser::traverseSceneGraph(RenderData &renderData, glm::mat4 ctm, Scen
     }
     if (node->primitives.size() != 0) { //stores the shape and its ctm
         for (ScenePrimitive* shape : node->primitives){
-            RenderShapeData renderShapeData = {*shape, ctm};
+            RenderShapeData renderShapeData = {node->name, *shape, ctm};
             renderData.shapes.push_back(renderShapeData);
         }
     }

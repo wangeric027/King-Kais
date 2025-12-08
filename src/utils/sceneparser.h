@@ -6,6 +6,7 @@
 
 // Struct which contains data for a single primitive, to be used for rendering
 struct RenderShapeData {
+    std::string name;
     ScenePrimitive primitive;
     glm::mat4 ctm; // the cumulative transformation matrix
 };
