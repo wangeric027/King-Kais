@@ -1248,6 +1248,7 @@
   /Users/ericwang/Compsci/cs1230/King-Kais/glm/vector_relational.hpp \
   /Users/ericwang/Compsci/cs1230/King-Kais/src/camera.h \
   /Users/ericwang/Compsci/cs1230/King-Kais/src/realtime.h \
+  /Users/ericwang/Compsci/cs1230/King-Kais/src/rigidbody.h \
   /Users/ericwang/Compsci/cs1230/King-Kais/src/trimesh/Cone.h \
   /Users/ericwang/Compsci/cs1230/King-Kais/src/trimesh/Cube.h \
   /Users/ericwang/Compsci/cs1230/King-Kais/src/trimesh/Cylinder.h \

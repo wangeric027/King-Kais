@@ -67,6 +67,8 @@ add_library(StaticGLEW STATIC glew/src/glew.c
     resources/shaders/deferred.vert
     resources/shaders/depth.frag
     resources/shaders/geo.frag
+    resources/shaders/skybox.vert
+    resources/shaders/skybox.frag
 )
 include_directories(${PROJECT_NAME} PRIVATE glew/include)
 

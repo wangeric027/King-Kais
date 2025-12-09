@@ -56,6 +56,7 @@ private:
     void timerEvent(QTimerEvent *event) override;
 
     void createFBO();
+    void createBackground();
 
     // Tick Related Variables
     int m_timer;                                        // Stores timer which attempts to run ~60 times per second
@@ -74,6 +75,7 @@ private:
     GLuint depth_shader;
     GLuint fogShader;
     GLuint geoBufferShader;
+    GLuint skyboxShader;
 
     int numTriangles;
 
@@ -83,13 +85,18 @@ private:
     std::vector<SceneLightData> sceneLightData;
     SceneGlobalData globals;
 
-    GLuint default_fbo = 2;
+    GLuint default_fbo;
     GLuint gBuffer;
     GLuint depthTexture, gPosition, gNormal, gDiffuse, gSpec;
     GLuint vboList[4];
     GLuint vaoList[4];
     GLuint m_fullscreen_vbo;
     GLuint m_fullscreen_vao;
+    GLuint skyboxVAO;
+    GLuint skyboxVBO;
+    GLuint skyboxEBO;
+    GLuint cubemapTexture;
+
     Cube cube;
     Sphere sphere;
     Cylinder cylinder;
@@ -99,6 +106,7 @@ private:
     void createImage();
     void geometryPass();
     void shadingPass();
+    void backgroundPass();
     void depthTest();
     void fogTest();
     void geoTest(int buffer);

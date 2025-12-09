@@ -8,6 +8,10 @@
 #include "utils/shaderloader.h"
 #include <glm/gtc/matrix_transform.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "utils/stb_image.h"
+
+
 // ================== Rendering the Scene!
 
 float objSpaceSphereRadius = 0.5f;
@@ -40,8 +44,30 @@ void Realtime::finish() {
     killTimer(m_timer);
     this->makeCurrent();
 
-    // Students: anything requiring OpenGL calls when the program exits should be done here
-
+    glDeleteVertexArrays(4, vaoList);
+    glDeleteBuffers(4, vboList);
+    glDeleteVertexArrays(1, &m_fullscreen_vao);
+    m_fullscreen_vao = 0;
+    glDeleteTextures(1, &depthTexture);
+    depthTexture = 0;
+    glDeleteTextures(1, &gPosition);
+    gPosition = 0;
+    glDeleteTextures(1, &gNormal);
+    gNormal = 0;
+    glDeleteTextures(1, &gDiffuse);
+    gDiffuse = 0;
+    glDeleteTextures(1, &gSpec);
+    gSpec = 0;
+    glDeleteFramebuffers(1, &gBuffer);
+    gBuffer = 0;
+    glDeleteProgram(geom_shader);
+    geom_shader = 0;
+    glDeleteProgram(deferred_shader);
+    deferred_shader = 0;
+    glDeleteProgram(depth_shader);
+    depth_shader = 0;
+    glDeleteProgram(geoBufferShader);
+    geoBufferShader = 0;
     this->doneCurrent();
 }
 
@@ -142,7 +168,85 @@ void Realtime::createImage(){
 
     //we now have a list of all shapes with their ctm, and vertices
     createFBO();
+    createBackground();
 
+}
+
+
+void Realtime::createBackground(){
+    float skyboxVertices[] = {
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, -1.0f,
+       -1.0f, 1.0f, -1.0f,
+    };
+    unsigned int skyboxIndices[]{
+        1,2,6,
+        6,5,1,
+        0,4,7,
+        7,3,0,
+        4,5,6,
+        6,7,4,
+        0,3,2,
+        2,1,0,
+        0,1,5,
+        5,4,0,
+        3,7,6,
+        6,2,3
+    };
+
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+    glGenBuffers(1, &skyboxEBO);
+    glBindVertexArray(skyboxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER,sizeof(skyboxVertices),skyboxVertices,GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, skyboxEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(skyboxIndices),skyboxIndices,GL_STATIC_DRAW);
+    glVertexAttribPointer(0,3,GL_FLOAT, GL_FALSE,3 * sizeof(float),(void*)0);
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    std::string facesCubemap[6]{
+        "sky/Epic_GloriousPink_Cam_2_Left+X.png",
+        "sky/Epic_GloriousPink_Cam_3_Right-X.png",
+        "sky/Epic_GloriousPink_Cam_4_Up+Y.png",
+        "sky/Epic_GloriousPink_Cam_5_Down-Y.png",
+        "sky/Epic_GloriousPink_Cam_0_Front+Z.png",
+        "sky/Epic_GloriousPink_Cam_1_Back-Z.png"
+    };
+
+
+
+    glGenTextures(1, &cubemapTexture);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+
+    for (int i = 0; i < 6; i++){
+        int width, height, nrChannels;
+        unsigned char* data = stbi_load(facesCubemap[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data){
+            stbi_set_flip_vertically_on_load(false);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            stbi_image_free(data);
+        }
+        else {
+            std::cout << "failed to load texture:" << data[i] << std::endl;
+        }
+
+    }
+    skyboxShader = ShaderLoader::createShaderProgram("resources/shaders/skybox.vert", "resources/shaders/skybox.frag");
 }
 
 void Realtime::createFBO(){
@@ -220,11 +324,14 @@ void Realtime::initializeGL() {
     glEnable(GL_DEPTH_TEST);
     // Tells OpenGL how big the screen is
     glViewport(0, 0, size().width() * m_devicePixelRatio, size().height() * m_devicePixelRatio);
+    default_fbo = 2;
 
     geom_shader = ShaderLoader::createShaderProgram("resources/shaders/gbuffer.vert", "resources/shaders/gbuffer.frag");
     deferred_shader = ShaderLoader::createShaderProgram("resources/shaders/deferred.vert", "resources/shaders/deferred.frag");
     depth_shader = ShaderLoader::createShaderProgram("resources/shaders/deferred.vert", "resources/shaders/depth.frag");
     geoBufferShader = ShaderLoader::createShaderProgram("resources/shaders/deferred.vert", "resources/shaders/geo.frag");
+
+    //skybox shaders
 
 
     std::vector<GLfloat> fullscreen_quad_data =
@@ -299,8 +406,15 @@ void Realtime::shadingPass(){
 
     glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
     glViewport(0, 0, screen_width, screen_height);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //glDisable(GL_DEPTH_TEST);
+
+    //glEnable(GL_BLEND);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
     glUseProgram(deferred_shader);
+
+
+
 
 
     GLint locPos  = glGetUniformLocation(deferred_shader, "gPosition");
@@ -322,7 +436,6 @@ void Realtime::shadingPass(){
     glUniform1i(locNorm, 1);
     glUniform1i(locDiff, 2);
     glUniform1i(locSpec, 3);
-
 
     for (int i = 0; i < sceneLightData.size(); i++){
         SceneLightData sceneLight = sceneLightData[i];
@@ -370,6 +483,37 @@ void Realtime::shadingPass(){
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindVertexArray(0);
     glUseProgram(0);
+}
+
+void Realtime::backgroundPass(){
+    //glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
+    glViewport(0, 0, screen_width, screen_height);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glUseProgram(skyboxShader);
+    glDisable(GL_CULL_FACE);
+
+    GLint shaderLoc = glGetUniformLocation(skyboxShader, "skybox");
+    glUniform1i(shaderLoc, 0);
+
+    glDepthFunc(GL_LEQUAL);
+    glm::mat4 proj = cam.getProjMatrix();
+    glm::mat4 view = cam.getViewMatrix();
+    view = glm::mat4(glm::mat3(view));
+
+
+    GLuint projLoc= glGetUniformLocation(skyboxShader, "projection");
+    GLuint viewLoc = glGetUniformLocation(skyboxShader, "view");
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, &proj[0][0]);
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, &view[0][0]);
+
+    glBindVertexArray(skyboxVAO);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT,0);
+    glBindVertexArray(0);
+    glDepthFunc(GL_LESS);
+    glEnable(GL_CULL_FACE);
+
 }
 
 
@@ -439,12 +583,15 @@ void Realtime::paintGL() {
     glClearColor(0.0f,0.0f,0.0f,0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
+    backgroundPass();
+
     geometryPass();
     shadingPass();
 
     //depthTest();
     //fogTest();
-    // geoTest(3);
+    //geoTest(3);
 
     glBindVertexArray(0);
     glUseProgram(0);

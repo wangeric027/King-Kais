@@ -26,10 +26,15 @@ uniform vec3 camPos;
 
 void main() {
     vec3 worldPos = texture(gPosition, texCoords).rgb;
+
     vec3 norm = texture(gNormal, texCoords).rgb;
+    if (length(norm) < 1e-4) {
+            discard;  // leaves the skybox pixel underneath as-is
+        }
     vec3 diffuse = texture(gDiffuse, texCoords).rgb;
     vec3 specular = texture(gSpec, texCoords).rgb;
     float shininess = texture(gSpec, texCoords).a;
+    norm = normalize(norm);
 
    vec4 finalColor = vec4(0.0f, 0.0f, 0.0f, 1.0f);
    finalColor += vec4(diffuse * 0.1, 1.0f);
@@ -72,19 +77,21 @@ void main() {
       }
 
       float diffuseAngle = dot(norm, -dirToLight);
-      vec4 diffuseColor = vec4(diffuse * kd * attenutation * lightColor * diffuseAngle, 1.0f);
-      finalColor += diffuseColor;
+      if (diffuseAngle > 0.0f) {
+         vec4 diffuseColor = vec4(diffuse * kd * attenutation * lightColor * diffuseAngle, 1.0f);
+         finalColor += diffuseColor;
 
-      vec3 r = 2 * diffuseAngle * norm + dirToLight;
-      r = normalize(r);
-      float specularAngle = max(0.0f, dot(dirToCam, r));
-      vec4 specColor;
-      if (shininess == 0.0f){
-         specColor = vec4(specular * ks * attenutation * lightColor * specularAngle, 1.0f);
-      } else{
-         specColor = vec4(specular * ks * attenutation * lightColor *  pow(specularAngle, shininess), 1.0f);
+         vec3 r = 2 * diffuseAngle * norm + dirToLight;
+         r = normalize(r);
+         float specularAngle = max(0.0f, dot(dirToCam, r));
+         vec4 specColor;
+         if (shininess == 0.0f){
+            specColor = vec4(specular * ks * attenutation * lightColor * specularAngle, 1.0f);
+         } else{
+            specColor = vec4(specular * ks * attenutation * lightColor *  pow(specularAngle, shininess), 1.0f);
+         }
+         finalColor += specColor;
       }
-      finalColor += specColor;
    }
-   FragColor = finalColor;
+   FragColor = vec4(vec3(finalColor),1.0f);
 }
