@@ -22,7 +22,7 @@
 
 
 struct RealtimeShapeInfo {
-    int shapeType; // 0 = Cube, 1 = Cone, 2 = Cylinder, 3 = Sphere
+    int shapeType; // 0 = Cube, 1 = Cone, 2 = Cylinder, 3 = Sphere, 4 = Goku
     glm::mat4 ctm;
     SceneMaterial material;
     std::string groupName;
@@ -88,8 +88,8 @@ private:
     GLuint default_fbo;
     GLuint gBuffer;
     GLuint depthTexture, gPosition, gNormal, gDiffuse, gSpec;
-    GLuint vboList[4];
-    GLuint vaoList[4];
+    GLuint vboList[5];
+    GLuint vaoList[5];
     GLuint m_fullscreen_vbo;
     GLuint m_fullscreen_vao;
     GLuint skyboxVAO;
@@ -102,7 +102,7 @@ private:
     Cylinder cylinder;
     Cone cone;
     RenderData metaData;
-    int sizeList[4];
+    int sizeList[5];
     void createImage();
     void geometryPass();
     void shadingPass();
@@ -111,6 +111,7 @@ private:
     void fogTest();
     void geoTest(int buffer);
     void alignToPlanetGravity();
+    std::vector<float> createGoku();
 
     glm::mat4 projMatrix;
     glm::mat4 viewMatrix;

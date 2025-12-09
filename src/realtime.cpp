@@ -11,6 +11,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "utils/stb_image.h"
 
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "utils/tiny_obj_loader.h"
+
 
 // ================== Rendering the Scene!
 
@@ -72,14 +75,81 @@ void Realtime::finish() {
 }
 
 
+std::vector<float> Realtime::createGoku(){
+    tinyobj::ObjReaderConfig config;
+    config.mtl_search_path = "";      // or wherever your .mtl lives
+    config.triangulate = true;        // make sure everything is triangles
+
+    tinyobj::ObjReader reader;
+    if (!reader.ParseFromFile("goku/Goku.obj", config)) {
+        if (!reader.Error().empty()) {
+            std::cerr << "TinyObjReader error: " << reader.Error() << std::endl;
+        }
+        std::vector<float> empty;
+        return empty;
+    }
+
+    if (!reader.Warning().empty()) {
+        std::cerr << "TinyObjReader warning: " << reader.Warning() << std::endl;
+    }
+
+    const tinyobj::attrib_t &attrib = reader.GetAttrib();
+    const std::vector<tinyobj::shape_t> &shapes = reader.GetShapes();
+
+    // Our vertex layout: pos(3), normal(3), uv(2) = 8 floats
+    std::vector<float> vertexData;
+
+    for (const auto &shape : shapes) {
+        for (const auto &idx : shape.mesh.indices) {
+            // --- position ---
+            if (idx.vertex_index < 0) continue; // skip invalid
+            int vIdx = 3 * idx.vertex_index;
+            float vx = attrib.vertices[vIdx + 0];
+            float vy = attrib.vertices[vIdx + 1];
+            float vz = attrib.vertices[vIdx + 2];
+
+            // --- normal ---
+            float nx = 0.f, ny = 0.f, nz = 1.f;
+            if (idx.normal_index >= 0) {
+                int nIdx = 3 * idx.normal_index;
+                nx = attrib.normals[nIdx + 0];
+                ny = attrib.normals[nIdx + 1];
+                nz = attrib.normals[nIdx + 2];
+            }
+
+            // --- texcoord ---
+            float u = 0.f, v = 0.f;
+            if (idx.texcoord_index >= 0) {
+                int tIdx = 2 * idx.texcoord_index;
+                u = attrib.texcoords[tIdx + 0];
+                v = attrib.texcoords[tIdx + 1];
+            }
+
+            vertexData.push_back(vx);
+            vertexData.push_back(vy);
+            vertexData.push_back(vz);
+
+            vertexData.push_back(nx);
+            vertexData.push_back(ny);
+            vertexData.push_back(nz);
+
+            vertexData.push_back(u);
+            vertexData.push_back(v);
+        }
+    }
+
+    return vertexData;
+}
+
+
 
 
 void Realtime::createImage(){
     glClearColor(0.0, 0, 0, 0.0);
     realtimeShapeList.clear();
     //generates list of buffers, one for each type of shape
-    glGenBuffers(4, vboList);
-    glGenVertexArrays(4, vaoList);
+    glGenBuffers(5, vboList);
+    glGenVertexArrays(5, vaoList);
 
 
     SceneParser::parse(settings.sceneFilePath, metaData);
@@ -95,7 +165,7 @@ void Realtime::createImage(){
 
     cam = Camera(this->width(), this->height(), metaData.cameraData, settings.nearPlane, settings.farPlane);
 
-    for (int i = 0; i < 4; i++){
+    for (int i = 0; i < 5; i++){
         //binds the VBO and inserts its corresponding vertex information
         glBindBuffer(GL_ARRAY_BUFFER, vboList[i]);
         std::vector<GLfloat> shapeVertexData;
@@ -115,6 +185,9 @@ void Realtime::createImage(){
             case 3: {
                 sphere.updateParams(settings.shapeParameter1, settings.shapeParameter2);
                 shapeVertexData = sphere.generateShape();
+            } break;
+            case 4:{
+                shapeVertexData = createGoku();
             }
             break;
         }
@@ -142,6 +215,7 @@ void Realtime::createImage(){
         RealtimeShapeInfo shapeInfo = RealtimeShapeInfo{enumAsInt, shape.ctm, shape.primitive.material, shape.name};
         glm::vec3 initialPos = shapeInfo.ctm[3];
         if (shapeInfo.groupName == "Player") {
+            shapeInfo.shapeType = 4;
             shapeInfo.rigidBody.setMass(1.0f);
             shapeInfo.rigidBody.position = initialPos;
         } else if (shapeInfo.groupName == "Planet") {
@@ -170,6 +244,7 @@ void Realtime::createImage(){
     createFBO();
     createBackground();
 
+    createGoku();
 }
 
 
@@ -517,67 +592,7 @@ void Realtime::backgroundPass(){
 }
 
 
-void Realtime::depthTest(){
-    glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
-    glViewport(0, 0, screen_width, screen_height);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram(depth_shader);
 
-    GLint depthLoc  = glGetUniformLocation(depth_shader, "depthTex");
-    GLint nearLoc  = glGetUniformLocation(depth_shader, "near");
-    GLint farLoc  = glGetUniformLocation(depth_shader, "far");
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, depthTexture);
-
-
-    glUniform1i(depthLoc,  0);
-    glUniform1f(nearLoc,  settings.nearPlane);
-    glUniform1f(farLoc,  settings.farPlane);
-
-
-    glBindVertexArray(m_fullscreen_vao);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindVertexArray(0);
-    glUseProgram(0);
-}
-
-
-void Realtime::geoTest(int buffer){
-    glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
-    glViewport(0, 0, screen_width, screen_height);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glUseProgram(geoBufferShader);
-
-    GLint bufferLoc  = glGetUniformLocation(geoBufferShader, "buffer");
-    GLint bufferTypeLoc  = glGetUniformLocation(geoBufferShader, "bufferType");
-
-    glActiveTexture(GL_TEXTURE0);
-    switch(buffer){
-        case 0:
-            glBindTexture(GL_TEXTURE_2D, gPosition);
-            break;
-        case 1:
-            glBindTexture(GL_TEXTURE_2D, gNormal);
-            break;
-        case 2:
-            glBindTexture(GL_TEXTURE_2D, gDiffuse);
-            break;
-        case 3:
-            glBindTexture(GL_TEXTURE_2D, gSpec);
-            break;
-    }
-    glUniform1i(bufferLoc,  0);
-    glUniform1i(bufferTypeLoc,  buffer);
-
-    glBindVertexArray(m_fullscreen_vao);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glBindVertexArray(0);
-    glUseProgram(0);
-
-}
 
 void Realtime::paintGL() {
     glClearColor(0.0f,0.0f,0.0f,0.0f);
@@ -619,7 +634,7 @@ void Realtime::reLoad() {
 
     cam.setPlanes(settings.nearPlane, settings.farPlane);
 
-    for (int i = 0; i < 4; i++){
+    for (int i = 0; i < 5; i++){
         //binds the VBO and inserts its corresponding vertex information
         glBindBuffer(GL_ARRAY_BUFFER, vboList[i]);
         std::vector<GLfloat> shapeVertexData;
@@ -639,6 +654,10 @@ void Realtime::reLoad() {
         case 3: {
             sphere.updateParams(settings.shapeParameter1, settings.shapeParameter2);
             shapeVertexData = sphere.generateShape();
+        } break;
+        case 4: {
+            shapeVertexData = createGoku();
+
         }
         break;
         }
@@ -979,4 +998,66 @@ void Realtime::saveViewportImage(std::string filePath) {
     glDeleteTextures(1, &texture);
     glDeleteRenderbuffers(1, &rbo);
     glDeleteFramebuffers(1, &fbo);
+}
+
+void Realtime::depthTest(){
+    glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
+    glViewport(0, 0, screen_width, screen_height);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glUseProgram(depth_shader);
+
+    GLint depthLoc  = glGetUniformLocation(depth_shader, "depthTex");
+    GLint nearLoc  = glGetUniformLocation(depth_shader, "near");
+    GLint farLoc  = glGetUniformLocation(depth_shader, "far");
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, depthTexture);
+
+
+    glUniform1i(depthLoc,  0);
+    glUniform1f(nearLoc,  settings.nearPlane);
+    glUniform1f(farLoc,  settings.farPlane);
+
+
+    glBindVertexArray(m_fullscreen_vao);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+
+
+void Realtime::geoTest(int buffer){
+    glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
+    glViewport(0, 0, screen_width, screen_height);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glUseProgram(geoBufferShader);
+
+    GLint bufferLoc  = glGetUniformLocation(geoBufferShader, "buffer");
+    GLint bufferTypeLoc  = glGetUniformLocation(geoBufferShader, "bufferType");
+
+    glActiveTexture(GL_TEXTURE0);
+    switch(buffer){
+    case 0:
+        glBindTexture(GL_TEXTURE_2D, gPosition);
+        break;
+    case 1:
+        glBindTexture(GL_TEXTURE_2D, gNormal);
+        break;
+    case 2:
+        glBindTexture(GL_TEXTURE_2D, gDiffuse);
+        break;
+    case 3:
+        glBindTexture(GL_TEXTURE_2D, gSpec);
+        break;
+    }
+    glUniform1i(bufferLoc,  0);
+    glUniform1i(bufferTypeLoc,  buffer);
+
+    glBindVertexArray(m_fullscreen_vao);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindVertexArray(0);
+    glUseProgram(0);
+
 }
