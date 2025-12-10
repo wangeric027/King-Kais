@@ -11,7 +11,7 @@ public:
     Tree();
 
     static std::string createTree();
-    static std::vector<glm::mat4> createCTMList(std::string treeString);
+    static std::vector<glm::mat4> createCTMList(std::string treeString, glm::vec3 posList);
 };
 
 #endif // TREE_H

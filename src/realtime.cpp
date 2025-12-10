@@ -136,6 +136,13 @@ void Realtime::finish() {
 
     glDeleteTextures(3, m_lut_textures);
 
+    //particles
+    glDeleteVertexArrays(1, &m_particle_vao);
+    glDeleteBuffers(1, &m_particle_vbo);
+    glDeleteProgram(m_particle_shader);
+
+    glDeleteTextures(3, m_lut_textures);
+
     this->doneCurrent();
 }
 
@@ -310,10 +317,25 @@ void Realtime::createImage(){
         }
     }
 
-    // for (glm::mat4 ctm : tree){
-    //     RealtimeShapeInfo branch = RealtimeShapeInfo{2, ctm, lastMat, "branch"};
-    //     realtimeShapeList.push_back(branch);
-    // }
+    std::vector<glm::mat4> tree1 = Tree::createCTMList(Tree::createTree(), glm::vec3(-0.75f, 1.3f, 0.9f));
+    std::vector<glm::mat4> tree2 = Tree::createCTMList(Tree::createTree(), glm::vec3(-10.75f, -5.0f, 0.3f));
+    std::vector<glm::mat4> tree3 = Tree::createCTMList(Tree::createTree(), glm::vec3(21.45f, -4.3f, -7.9f));
+    std::vector<glm::mat4> tree4 = Tree::createCTMList(Tree::createTree(), glm::vec3(10.45f, -4.3f, -7.9f));
+    std::vector<glm::mat4> tree7 = Tree::createCTMList(Tree::createTree(), glm::vec3(-10.45f, -4.3f, -7.9f));
+
+    std::vector<glm::mat4> trees;
+    trees.insert(trees.end(), tree1.begin(), tree1.end());
+    trees.insert(trees.end(), tree2.begin(), tree2.end());
+    trees.insert(trees.end(), tree3.begin(), tree3.end());
+    trees.insert(trees.end(), tree4.begin(), tree4.end());
+    trees.insert(trees.end(), tree7.begin(), tree7.end());
+
+    for (glm::mat4 ctm : trees){
+        RealtimeShapeInfo branch = RealtimeShapeInfo{2, ctm, lastMat, "branch"};
+        branch.rigidBody.setMass(0.0f);
+        branch.rigidBody.position = branch.ctm[3];
+        realtimeShapeList.push_back(branch);
+    }
 
     createFBO();
     createBackground();
@@ -564,6 +586,8 @@ void Realtime::initializeGL() {
     m_lut_textures[2] = loadLUT("resources/LUT/OrangeAndBlue.cube");
 
     /* ---------------- ADDED FOR POST-PROCESSING END ------------------ */
+
+    initParticles();
 }
 
 void Realtime::geometryPass(){
@@ -695,6 +719,100 @@ void Realtime::shadingPass(){
     glUseProgram(0);
 }
 
+// void Realtime::shadingPass(){
+
+//     glBindFramebuffer(GL_FRAMEBUFFER, m_post_fbo);
+//     glViewport(0, 0, screen_width, screen_height);
+
+//     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+//     // // **KEY FIX: Copy depth buffer from gBuffer to m_post_fbo**
+//     // glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
+//     // glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_post_fbo);
+//     // glBlitFramebuffer(
+//     //     0, 0, screen_width, screen_height,
+//     //     0, 0, screen_width, screen_height,
+//     //     GL_DEPTH_BUFFER_BIT,
+//     //     GL_NEAREST
+//     //     );
+
+//     // Now bind for drawing
+//     //glBindFramebuffer(GL_FRAMEBUFFER, m_post_fbo);
+
+//     glDisable(GL_DEPTH_TEST);  // Disable for fullscreen quad
+//     glDepthMask(GL_FALSE);
+
+//     glUseProgram(deferred_shader);
+
+//     GLint locPos  = glGetUniformLocation(deferred_shader, "gPosition");
+//     GLint locNorm = glGetUniformLocation(deferred_shader, "gNormal");
+//     GLint locDiff = glGetUniformLocation(deferred_shader, "gDiffuse");
+//     GLint locSpec = glGetUniformLocation(deferred_shader, "gSpec");
+
+//     glActiveTexture(GL_TEXTURE0);
+//     glBindTexture(GL_TEXTURE_2D, gPosition);
+//     glActiveTexture(GL_TEXTURE1);
+//     glBindTexture(GL_TEXTURE_2D, gNormal);
+//     glActiveTexture(GL_TEXTURE2);
+//     glBindTexture(GL_TEXTURE_2D, gDiffuse);
+//     glActiveTexture(GL_TEXTURE3);
+//     glBindTexture(GL_TEXTURE_2D, gSpec);
+
+//     glUniform1i(locPos,  0);
+//     glUniform1i(locNorm, 1);
+//     glUniform1i(locDiff, 2);
+//     glUniform1i(locSpec, 3);
+
+//     for (int i = 0; i < sceneLightData.size(); i++){
+//         SceneLightData sceneLight = sceneLightData[i];
+//         std::string posName = "posList[" + std::to_string(i) + "]";
+//         std::string dirName = "dirList[" + std::to_string(i) + "]";
+//         std::string colorName = "colorList[" + std::to_string(i) + "]";
+//         std::string attName = "attenuationList[" + std::to_string(i) + "]";
+//         std::string penName = "penumbraList[" + std::to_string(i) + "]";
+//         std::string angleName = "angleList[" + std::to_string(i) + "]";
+//         std::string typeName = "typeList[" + std::to_string(i) + "]";
+
+//         int uniformPos = glGetUniformLocation(deferred_shader, posName.c_str());
+//         int uniformDir = glGetUniformLocation(deferred_shader, dirName.c_str());
+//         int uniformColor = glGetUniformLocation(deferred_shader, colorName.c_str());
+//         int uniformAtt = glGetUniformLocation(deferred_shader, attName.c_str());
+//         int uniformPen = glGetUniformLocation(deferred_shader, penName.c_str());
+//         int uniformAngle = glGetUniformLocation(deferred_shader, angleName.c_str());
+
+//         int lightAsInt = static_cast<int>(sceneLight.type);
+//         int uniformType = glGetUniformLocation(deferred_shader, typeName.c_str());
+
+//         glUniform3f(uniformPos, sceneLight.pos[0], sceneLight.pos[1], sceneLight.pos[2]);
+//         glUniform3f(uniformDir, sceneLight.dir[0], sceneLight.dir[1], sceneLight.dir[2]);
+//         glUniform4f(uniformColor, sceneLight.color[0], sceneLight.color[1], sceneLight.color[2], sceneLight.color[3]);
+//         glUniform3f(uniformAtt, sceneLight.function[0], sceneLight.function[1], sceneLight.function[2]);
+//         glUniform1f(uniformPen, sceneLight.penumbra);
+//         glUniform1f(uniformAngle, sceneLight.angle);
+//         glUniform1i(uniformType, lightAsInt);
+//     }
+
+//     int uniformCount = glGetUniformLocation(deferred_shader, "lightCount");
+//     int uniformKA = glGetUniformLocation(deferred_shader, "ka");
+//     int uniformKS = glGetUniformLocation(deferred_shader, "ks");
+//     int uniformKD = glGetUniformLocation(deferred_shader, "kd");
+//     int uniformCamPos = glGetUniformLocation(deferred_shader, "camPos");
+//     glUniform1i(uniformCount, sceneLightData.size());
+//     glUniform1f(uniformKA, globals.ka);
+//     glUniform1f(uniformKS, globals.ks);
+//     glUniform1f(uniformKD, globals.kd);
+//     glUniform3f(uniformCamPos, cam.pos[0], cam.pos[1], cam.pos[2]);
+
+//     glBindVertexArray(m_fullscreen_vao);
+//     glDrawArrays(GL_TRIANGLES, 0, 6);
+//     glBindTexture(GL_TEXTURE_2D, 0);
+//     glBindVertexArray(0);
+
+//     glDepthMask(GL_TRUE);
+//     glEnable(GL_DEPTH_TEST);  // Re-enable for subsequent passes
+//     glUseProgram(0);
+// }
+
 void Realtime::backgroundPass(){
     glBindFramebuffer(GL_FRAMEBUFFER, m_post_fbo); //this was uncommented and changed to m_post_fbo
     glViewport(0, 0, screen_width, screen_height);
@@ -723,74 +841,231 @@ void Realtime::backgroundPass(){
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT,0);
     glBindVertexArray(0);
+
+
     glDepthFunc(GL_LESS);
     glEnable(GL_CULL_FACE);
 
     //added this
     glDepthMask(GL_TRUE);
 
+    glUseProgram(0); // added this
+
 }
 
 void Realtime::ppPass(){
 
-//     /* ---------------- ADDED FOR POST-PROCESSING BEGIN ---------------- /
+    //     /* ---------------- ADDED FOR POST-PROCESSING BEGIN ---------------- /
 
-// // Draw shaded scene through your stylized post-process shader
-glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
-glViewport(0, 0, screen_width, screen_height);
-glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-glDisable(GL_DEPTH_TEST);
+    // // Draw shaded scene through your stylized post-process shader
+    glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
+    glViewport(0, 0, screen_width, screen_height);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glDisable(GL_DEPTH_TEST);
 
-glUseProgram(m_texture_shader);
+    glUseProgram(m_texture_shader);
 
-// Bind color texture from post-FBO
-glActiveTexture(GL_TEXTURE0);
-glBindTexture(GL_TEXTURE_2D, m_post_color);
-glUniform1i(glGetUniformLocation(m_texture_shader, "colorTexture"), 0);
+    // Bind color texture from post-FBO
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, m_post_color);
+    glUniform1i(glGetUniformLocation(m_texture_shader, "colorTexture"), 0);
 
-// Bind depth texture (if your shader uses it)
-glActiveTexture(GL_TEXTURE1);
-glBindTexture(GL_TEXTURE_2D, depthTexture);
-glUniform1i(glGetUniformLocation(m_texture_shader, "depthTexture"), 1);
+    // Bind depth texture (if your shader uses it)
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, depthTexture);
+    glUniform1i(glGetUniformLocation(m_texture_shader, "depthTexture"), 1);
 
-if (m_effects.lutIndex > 0 && m_effects.lutIndex <= 3) {
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_3D, m_lut_textures[m_effects.lutIndex - 1]);
-    glUniform1i(glGetUniformLocation(m_texture_shader, "lutTexture"), 2);
+    if (m_effects.lutIndex > 0 && m_effects.lutIndex <= 3) {
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_3D, m_lut_textures[m_effects.lutIndex - 1]);
+        glUniform1i(glGetUniformLocation(m_texture_shader, "lutTexture"), 2);
+    }
+
+
+    //texel size for pixelation
+    glUniform2f(glGetUniformLocation(m_texture_shader, "texelSize"), 1.0f / screen_width, 1.0f / screen_height);
+
+    // Send stylization toggles
+    glUniform1i(glGetUniformLocation(m_texture_shader, "useGrayscale"), m_effects.grayscale);
+    glUniform1i(glGetUniformLocation(m_texture_shader, "useInvert"), m_effects.invert);
+    glUniform1i(glGetUniformLocation(m_texture_shader, "useEdgeDetection"), m_effects.edgeDetection);
+    glUniform1i(glGetUniformLocation(m_texture_shader, "useVignette"), m_effects.vignette);
+    glUniform1i(glGetUniformLocation(m_texture_shader, "useDepthVisualization"), m_effects.depthVisualization);
+    glUniform1i(glGetUniformLocation(m_texture_shader, "usePixelation"), m_effects.pixelation);
+    glUniform1i(glGetUniformLocation(m_texture_shader, "useToonShading"), m_effects.toonShading);
+
+    glUniform1i(glGetUniformLocation(m_texture_shader, "lutIndex"), m_effects.lutIndex);
+
+    // Draw fullscreen quad
+    glBindVertexArray(m_pp_vao);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, m_post_color);
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_width, screen_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    glBindTexture(GL_TEXTURE_2D, m_post_depth);
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, screen_width, screen_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glEnable(GL_DEPTH_TEST);
+    // / ---------------- ADDED FOR POST-PROCESSING END ------------------ */
+
 }
 
+// -------------------  PARTICLES ----------------------
 
-//texel size for pixelation
-glUniform2f(glGetUniformLocation(m_texture_shader, "texelSize"), 1.0f / screen_width, 1.0f / screen_height);
+void Realtime::initParticles() {
+    m_particles.reserve(m_max_particles);
 
-// Send stylization toggles
-glUniform1i(glGetUniformLocation(m_texture_shader, "useGrayscale"), m_effects.grayscale);
-glUniform1i(glGetUniformLocation(m_texture_shader, "useInvert"), m_effects.invert);
-glUniform1i(glGetUniformLocation(m_texture_shader, "useEdgeDetection"), m_effects.edgeDetection);
-glUniform1i(glGetUniformLocation(m_texture_shader, "useVignette"), m_effects.vignette);
-glUniform1i(glGetUniformLocation(m_texture_shader, "useDepthVisualization"), m_effects.depthVisualization);
-glUniform1i(glGetUniformLocation(m_texture_shader, "usePixelation"), m_effects.pixelation);
-glUniform1i(glGetUniformLocation(m_texture_shader, "useToonShading"), m_effects.toonShading);
+    // Create particle shader
+    m_particle_shader = ShaderLoader::createShaderProgram(
+        "resources/shaders/particle.vert",
+        "resources/shaders/particle.frag"
+        );
 
-glUniform1i(glGetUniformLocation(m_texture_shader, "lutIndex"), m_effects.lutIndex);
+    // Create VAO/VBO for point rendering
+    glGenVertexArrays(1, &m_particle_vao);
+    glGenBuffers(1, &m_particle_vbo);
 
-// Draw fullscreen quad
-glBindVertexArray(m_pp_vao);
-glDrawArrays(GL_TRIANGLES, 0, 6);
-glBindVertexArray(0);
-glBindTexture(GL_TEXTURE_2D, m_post_color);
-// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_width, screen_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glBindVertexArray(m_particle_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, m_particle_vbo);
 
-glBindTexture(GL_TEXTURE_2D, m_post_depth);
-// glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, screen_width, screen_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    // We'll update this buffer every frame
+    glBufferData(GL_ARRAY_BUFFER, m_max_particles * sizeof(Particle), nullptr, GL_DYNAMIC_DRAW);
 
-glBindTexture(GL_TEXTURE_2D, 0);
-glEnable(GL_DEPTH_TEST);
-// / ---------------- ADDED FOR POST-PROCESSING END ------------------ */
+    // Position
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (void*)offsetof(Particle, position));
 
+    // Color
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Particle), (void*)offsetof(Particle, color));
+
+    // Life
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(Particle), (void*)offsetof(Particle, life));
+
+    // Size
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(Particle), (void*)offsetof(Particle, size));
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
+void Realtime::spawnAuraParticles() {
+    if (!hasPlayer) return;
 
+    glm::vec3 playerPos = m_player->ctm[3];
+
+    // Extract player's local up vector from CTM
+    glm::vec3 localUp = glm::normalize(glm::vec3(m_player->ctm[1][0], m_player->ctm[1][1], m_player->ctm[1][2]));
+
+    // Spawn particles in a sphere around the player
+    int particlesToSpawn = 3;  // Spawn a few per frame
+
+    for (int i = 0; i < particlesToSpawn && m_particles.size() < m_max_particles; i++) {
+        Particle p;
+
+        // Random position in a sphere around player
+        float theta = ((rand() % 1000) / 1000.0f) * 2.0f * M_PI;
+        float phi = ((rand() % 1000) / 1000.0f) * M_PI;
+        float radius = 0.1f + ((rand() % 100) / 500.0f);  // 0.3 to 0.5 units
+
+        glm::vec3 offset;
+        offset.x = radius * sin(phi) * cos(theta);
+        offset.y = radius * sin(phi) * sin(theta);
+        offset.z = radius * cos(phi);
+
+        p.position = playerPos + offset;
+
+        // Get player's local right and forward vectors for tangential motion
+        glm::vec3 localRight = glm::normalize(glm::vec3(m_player->ctm[0][0], m_player->ctm[0][1], m_player->ctm[0][2]));
+        glm::vec3 localForward = glm::normalize(glm::vec3(m_player->ctm[2][0], m_player->ctm[2][1], m_player->ctm[2][2]));
+
+        // Create circular/swirling motion in player's local space
+        glm::vec3 tangentialMotion = (sin(theta) * localRight + cos(theta) * localForward) * 0.2f;
+
+        // Drift upward in player's local up direction
+        p.velocity = tangentialMotion + localUp * 0.3f;
+
+        // Blue aura colors with variation
+        float blueTint = 0.7f + ((rand() % 100) / 300.0f);
+        p.color = glm::vec4(
+            0.2f,                           // Low red
+            0.4f + ((rand() % 100) / 500.0f), // Medium green
+            blueTint,                        // High blue
+            0.8f                            // Semi-transparent
+            );
+
+        p.life = 0.5f + ((rand() % 100) / 100.0f);  // 1-2 seconds
+        p.size = 10.0f + ((rand() % 100) / 10.0f);
+
+        m_particles.push_back(p);
+    }
+}
+
+void Realtime::updateParticles(float deltaTime) {
+    // Update all particles
+    for (auto& p : m_particles) {
+        p.life -= deltaTime * 0.5f;  // Decay rate
+
+        // Move particle
+        p.position += p.velocity * deltaTime;
+
+        // Optional: Add slight drift/swirl
+        float time = 1.0f - p.life;
+        p.position.x += sin(time * 3.0f) * deltaTime * 0.1f;
+        p.position.z += cos(time * 3.0f) * deltaTime * 0.1f;
+
+        // Fade out as life decreases
+        p.color.a = p.life * 0.6f;
+    }
+
+    // Remove dead particles
+    m_particles.erase(
+        std::remove_if(m_particles.begin(), m_particles.end(), [](const Particle& p) { return p.life <= 0.0f; }),
+        m_particles.end()
+        );
+
+    // Spawn new aura particles
+    spawnAuraParticles();
+}
+
+void Realtime::renderParticles() {
+    if (m_particles.empty()) return;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_post_fbo);
+
+    glUseProgram(m_particle_shader);
+    glEnable(GL_PROGRAM_POINT_SIZE);
+
+    // Keep depth testing ENABLED but disable depth writes
+    glDepthMask(GL_FALSE);  // Don't write to depth buffer
+    // glDisable(GL_DEPTH_TEST);  // ← REMOVE THIS LINE
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
+    // Upload particle data
+    glBindBuffer(GL_ARRAY_BUFFER, m_particle_vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, m_particles.size() * sizeof(Particle), m_particles.data());
+
+    glm::mat4 viewProj = cam.getProjMatrix() * cam.getViewMatrix();
+    glUniformMatrix4fv(glGetUniformLocation(m_particle_shader, "viewProj"), 1, GL_FALSE, &viewProj[0][0]);
+
+    glBindVertexArray(m_particle_vao);
+    glDrawArrays(GL_POINTS, 0, m_particles.size());
+    glBindVertexArray(0);
+
+    // Restore state
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
+    glDisable(GL_PROGRAM_POINT_SIZE);
+    glUseProgram(0);
+}
+
+// ----------------------- Particles Ending -------------------------
 
 void Realtime::paintGL() {
     glClearColor(0.0f,0.0f,0.0f,0.0f);
@@ -802,6 +1077,7 @@ void Realtime::paintGL() {
     geometryPass();
     shadingPass();
     backgroundPass();
+    /*renderParticles();*/ // Particals
     ppPass();
 
 
@@ -1154,6 +1430,7 @@ void Realtime::timerEvent(QTimerEvent *event) {
         }
         cam.followPlayer(m_player->ctm, CAMERA_DISTANCE, CAMERA_HEIGHT);
     }
+    updateParticles(deltaTime);
     update(); // asks for a PaintGL() call to occur
 }
 

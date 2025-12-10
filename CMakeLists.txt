@@ -72,6 +72,8 @@ add_library(StaticGLEW STATIC glew/src/glew.c
     src/tree.h src/tree.cpp
     resources/shaders/texture.frag
     resources/shaders/texture.vert
+    resources/shaders/particle.frag
+    resources/shaders/particle.vert
 
 
 )

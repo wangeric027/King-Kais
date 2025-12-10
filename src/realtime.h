@@ -20,6 +20,15 @@
 #include "trimesh/Cylinder.h"
 #include "rigidbody.h"
 
+// ----------------- Particle System ------------ //
+struct Particle {
+    glm::vec3 position;
+    glm::vec3 velocity;
+    glm::vec4 color;
+    float life;        // Remaining life (0 = dead)
+    float size;
+};
+// ----------------- Particle End --------------- //
 
 struct RealtimeShapeInfo {
     int shapeType; // 0 = Cube, 1 = Cone, 2 = Cylinder, 3 = Sphere, 4 = Goku
@@ -163,6 +172,21 @@ private:
     // Current effect toggles
     PostProcessingEffects m_effects;
     // ---------------- ADDED FOR POST-PROCESSING END ------------------
+
+    // ---------------- Particles ---------------------------
+    // Particle system
+    std::vector<Particle> m_particles;
+    GLuint m_particle_vao;
+    GLuint m_particle_vbo;
+    GLuint m_particle_shader;
+    int m_max_particles = 5000;
+
+    void initParticles();
+    void updateParticles(float deltaTime);
+    void renderParticles();
+    void spawnAuraParticles();
+
+    // ----------------- Particle END ------------------------
 
 
 
