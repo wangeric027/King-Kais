@@ -54,6 +54,7 @@ add_executable(${PROJECT_NAME}
     src/camera.h
     src/rigidbody.h src/rigidbody.cpp
 
+
 )
 
 # GLM: this creates its library and allows you to `#include "glm/..."`
@@ -69,6 +70,8 @@ add_library(StaticGLEW STATIC glew/src/glew.c
     resources/shaders/geo.frag
     resources/shaders/skybox.vert
     resources/shaders/skybox.frag
+    resources/shaders/texture.vert
+    texture.frag
 )
 include_directories(${PROJECT_NAME} PRIVATE glew/include)
 
