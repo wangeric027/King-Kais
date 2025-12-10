@@ -24,6 +24,9 @@
 float objSpaceSphereRadius = 0.5f;
 float moveSpeed = 1.0f;
 float rotationAngle = glm::radians(7.5f);
+const float CAMERA_DISTANCE = 2.0f;
+const float CAMERA_HEIGHT = 2.5f;
+bool hasPlayer = false;
 
 Realtime::Realtime(QWidget *parent)
     : QOpenGLWidget(parent)
@@ -151,7 +154,7 @@ std::vector<float> Realtime::createGoku(){
 
 void Realtime::createImage(){
 
-    std::vector<glm::mat4> tree = Tree::createCTMList(Tree::createTree());
+    //std::vector<glm::mat4> tree = Tree::createCTMList(Tree::createTree());
     glClearColor(0.0, 0, 0, 1.0);
     realtimeShapeList.clear();
     //generates list of buffers, one for each type of shape
@@ -242,16 +245,17 @@ void Realtime::createImage(){
     for (RealtimeShapeInfo &shapeInfo: realtimeShapeList) {
         if (shapeInfo.groupName == "Player") {
             m_player = &shapeInfo;
+            hasPlayer = true;
         }
         if (shapeInfo.groupName == "Planet") {
             m_planet= &shapeInfo;
         }
     }
 
-    for (glm::mat4 ctm : tree){
-        RealtimeShapeInfo branch = RealtimeShapeInfo{2, ctm, lastMat, "branch"};
-        realtimeShapeList.push_back(branch);
-    }
+    // for (glm::mat4 ctm : tree){
+    //     RealtimeShapeInfo branch = RealtimeShapeInfo{2, ctm, lastMat, "branch"};
+    //     realtimeShapeList.push_back(branch);
+    // }
 
     createFBO();
     createBackground();
@@ -410,7 +414,7 @@ void Realtime::initializeGL() {
     glEnable(GL_DEPTH_TEST);
     // Tells OpenGL how big the screen is
     glViewport(0, 0, size().width() * m_devicePixelRatio, size().height() * m_devicePixelRatio);
-    default_fbo = 2;
+    default_fbo = 3;
 
     geom_shader = ShaderLoader::createShaderProgram("resources/shaders/gbuffer.vert", "resources/shaders/gbuffer.frag");
     deferred_shader = ShaderLoader::createShaderProgram("resources/shaders/deferred.vert", "resources/shaders/deferred.frag");
@@ -442,6 +446,61 @@ void Realtime::initializeGL() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     createImage();
+
+
+
+    /// 1. Load post-processing shader
+    m_texture_shader = ShaderLoader::createShaderProgram(
+        "resources/shaders/texture.vert",
+        "resources/shaders/texture.frag"
+        );
+
+    /// 2. Create post-processing FBO
+    glGenFramebuffers(1, &m_post_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_post_fbo);
+
+    glGenTextures(1, &m_post_color);
+    glBindTexture(GL_TEXTURE_2D, m_post_color);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_width, screen_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_post_color, 0);
+
+    glGenTextures(1, &m_post_depth);
+    glBindTexture(GL_TEXTURE_2D, m_post_depth);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, screen_width, screen_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_post_depth, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    /// 3. Fullscreen quad for post-processing
+    std::vector<GLfloat> pp_quad = {
+        -1.f,  1.f, 0.f,   0.f, 1.f,
+        -1.f, -1.f, 0.f,   0.f, 0.f,
+        1.f, -1.f, 0.f,   1.f, 0.f,
+
+        -1.f,  1.f, 0.f,   0.f, 1.f,
+        1.f, -1.f, 0.f,   1.f, 0.f,
+        1.f,  1.f, 0.f,   1.f, 1.f
+    };
+
+    glGenVertexArrays(1, &m_pp_vao);
+    glGenBuffers(1, &m_pp_vbo);
+
+    glBindVertexArray(m_pp_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, m_pp_vbo);
+    glBufferData(GL_ARRAY_BUFFER, pp_quad.size() * sizeof(GLfloat), pp_quad.data(), GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), nullptr);
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), reinterpret_cast<void*>(3* sizeof(GLfloat)));
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    /* ---------------- ADDED FOR POST-PROCESSING END ------------------ */
 }
 
 void Realtime::geometryPass(){
@@ -493,7 +552,7 @@ void Realtime::geometryPass(){
 
 void Realtime::shadingPass(){
 
-    glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_post_fbo);
     glViewport(0, 0, screen_width, screen_height);
     //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //glDisable(GL_DEPTH_TEST);
@@ -599,6 +658,50 @@ void Realtime::backgroundPass(){
 
 }
 
+void Realtime::ppPass(){
+
+//     /* ---------------- ADDED FOR POST-PROCESSING BEGIN ---------------- /
+
+// // Draw shaded scene through your stylized post-process shader
+glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
+glViewport(0, 0, screen_width, screen_height);
+glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+glDisable(GL_DEPTH_TEST);
+
+glUseProgram(m_texture_shader);
+
+// Bind color texture from post-FBO
+glActiveTexture(GL_TEXTURE0);
+glBindTexture(GL_TEXTURE_2D, m_post_color);
+glUniform1i(glGetUniformLocation(m_texture_shader, "colorTexture"), 0);
+
+// Bind depth texture (if your shader uses it)
+glActiveTexture(GL_TEXTURE1);
+glBindTexture(GL_TEXTURE_2D, m_post_depth);
+glUniform1i(glGetUniformLocation(m_texture_shader, "depthTexture"), 1);
+
+// Send stylization toggles
+glUniform1i(glGetUniformLocation(m_texture_shader, "useGrayscale"), m_effects.grayscale);
+glUniform1i(glGetUniformLocation(m_texture_shader, "useInvert"), m_effects.invert);
+glUniform1i(glGetUniformLocation(m_texture_shader, "useEdgeDetection"), m_effects.edgeDetection);
+glUniform1i(glGetUniformLocation(m_texture_shader, "useVignette"), m_effects.vignette);
+glUniform1i(glGetUniformLocation(m_texture_shader, "useDepthVisualization"), m_effects.depthVisualization);
+glUniform1i(glGetUniformLocation(m_texture_shader, "usePixelation"), m_effects.pixelation);
+
+// Draw fullscreen quad
+glBindVertexArray(m_pp_vao);
+glDrawArrays(GL_TRIANGLES, 0, 6);
+glBindVertexArray(0);
+glBindTexture(GL_TEXTURE_2D, m_post_color);
+glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_width, screen_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+glBindTexture(GL_TEXTURE_2D, m_post_depth);
+glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, screen_width, screen_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+
+glBindTexture(GL_TEXTURE_2D, 0);
+// / ---------------- ADDED FOR POST-PROCESSING END ------------------ */
+
+}
 
 
 
@@ -611,10 +714,8 @@ void Realtime::paintGL() {
 
     geometryPass();
     shadingPass();
+    ppPass();
 
-    //depthTest();
-    //fogTest();
-    //geoTest(3);
 
     glBindVertexArray(0);
     glUseProgram(0);
@@ -623,6 +724,14 @@ void Realtime::paintGL() {
 void Realtime::resizeGL(int w, int h) {
     // Tells OpenGL how big the screen is
     glViewport(0, 0, size().width() * m_devicePixelRatio, size().height() * m_devicePixelRatio);
+
+    glBindTexture(GL_TEXTURE_2D, m_post_color);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_width, screen_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    glBindTexture(GL_TEXTURE_2D, m_post_depth);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, screen_width, screen_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     // Students: anything requiring OpenGL calls when the program starts should be done here
 }
@@ -696,7 +805,13 @@ void Realtime::settingsChanged() {
 
 void Realtime::keyPressEvent(QKeyEvent *event) {
     m_keyMap[Qt::Key(event->key())] = true;
-
+    if (event->key() == Qt::Key_Z) { m_effects.depthVisualization ^= 1; update(); }
+    if (event->key() == Qt::Key_E) { m_effects.edgeDetection    ^= 1; update(); }
+    if (event->key() == Qt::Key_G) { m_effects.grayscale        ^= 1; update(); }
+    if (event->key() == Qt::Key_I) { m_effects.invert           ^= 1; update(); }
+    if (event->key() == Qt::Key_V) { m_effects.vignette         ^= 1; update(); }
+    if (event->key() == Qt::Key_P) { m_effects.pixelation       ^= 1; update(); }
+    if (event->key() == Qt::Key_C) { m_effects = PostProcessingEffects(); update(); }
 }
 
 void Realtime::keyReleaseEvent(QKeyEvent *event) {
@@ -905,14 +1020,16 @@ void Realtime::timerEvent(QTimerEvent *event) {
         Qt::Key key = entry.first;
         if (entry.second) {
             cam.move(static_cast<int>(key));
-            rotatePlayer(key, m_player);
-            if (key == Qt::Key_Up || key == Qt::Key_Down) {
-                isMovingPlayer = true;
-                movePlayer(key, m_player, m_planet);
+            if (hasPlayer){
+                rotatePlayer(key, m_player);
+                if (key == Qt::Key_Up || key == Qt::Key_Down) {
+                    isMovingPlayer = true;
+                    movePlayer(key, m_player, m_planet);
+                }
             }
         }
     }
-    if (settings.extraCredit1) {
+    if (settings.extraCredit1 && hasPlayer) {
         glm::vec3 F_planet = applyPlanetGravity(m_player->rigidBody, m_planet->rigidBody);
 
         m_player->rigidBody.applyForce(F_planet);
@@ -939,6 +1056,7 @@ void Realtime::timerEvent(QTimerEvent *event) {
             shapeData.ctm[3][1] = newPos.y;
             shapeData.ctm[3][2] = newPos.z;
         }
+        cam.followPlayer(m_player->ctm, CAMERA_DISTANCE, CAMERA_HEIGHT);
     }
     update(); // asks for a PaintGL() call to occur
 }

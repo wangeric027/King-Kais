@@ -40,6 +40,8 @@ public:
     void move(int key);
     void rotateCam(float deltaX, float deltaY);
     void setPlanes(float nearPlaneData, float farPlaneData);
+    void followPlayer(glm::mat4& ctm, float dist, float height);
+    void calculateVectorsPlayer(const glm::vec3& upReference);
 private:
     void calculateVectors();
     float aspectRatio;
@@ -54,5 +56,6 @@ private:
     glm::mat4 projMatrix;
     void initViewMatrices();
     void initProjMatrix();
+
 
 };

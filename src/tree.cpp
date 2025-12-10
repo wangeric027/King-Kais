@@ -11,7 +11,7 @@ Tree::Tree() {
 std::string Tree::createTree(){
     std::string treeString;
     std::string axiom = "FB";
-    int iterations = 4 ;
+    int iterations = 4;
 
     for (int i = 0; i < iterations; i++){
         std::string build;
@@ -52,8 +52,8 @@ std::vector<glm::mat4> Tree::createCTMList(std::string treeString){
     for (char character : treeString){
         switch(character){
             case 'F':
-                currentCTM = glm::translate(currentCTM, currentAxis);
-                resList.push_back(currentCTM);
+                currentCTM = glm::translate(currentCTM,  currentAxis * 0.05f);
+                resList.push_back(glm::scale(currentCTM, glm::vec3(0.1f,0.1f,0.1f)));
                 break;
             case 'B':
                 break;

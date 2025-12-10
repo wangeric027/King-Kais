@@ -70,6 +70,8 @@ add_library(StaticGLEW STATIC glew/src/glew.c
     resources/shaders/skybox.vert
     resources/shaders/skybox.frag
     src/tree.h src/tree.cpp
+    resources/shaders/texture.frag
+    resources/shaders/texture.vert
 
 
 )

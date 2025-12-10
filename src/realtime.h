@@ -29,6 +29,18 @@ struct RealtimeShapeInfo {
     RigidBody rigidBody;
 };
 
+// ---------------- ADDED FOR POST-PROCESSING BEGIN ----------------
+// Simple struct used by your stylized filter system
+struct PostProcessingEffects {
+    bool grayscale = false;
+    bool invert = false;
+    bool edgeDetection = false;
+    bool vignette = false;
+    bool depthVisualization = false;
+    bool pixelation = false;
+};
+// ---------------- ADDED FOR POST-PROCESSING END ------------------
+
 class Realtime : public QOpenGLWidget
 {
 public:
@@ -109,6 +121,7 @@ private:
     void geometryPass();
     void shadingPass();
     void backgroundPass();
+    void ppPass();
     void depthTest();
     void fogTest();
     void geoTest(int buffer);
@@ -125,4 +138,26 @@ private:
     Camera cam;
 
     bool m_glInitialized = false;
+
+
+    // ---------------- ADDED FOR POST-PROCESSING BEGIN ----------------
+    // Your custom FBO that stores the final shaded image before stylization
+    GLuint m_post_fbo;
+    GLuint m_post_color;
+    GLuint m_post_depth;
+
+    // Shader for stylized full-screen effects
+    GLuint m_texture_shader;
+
+    // For drawing the fullscreen quad
+    GLuint m_pp_vbo;
+    GLuint m_pp_vao;
+
+    // Current effect toggles
+    PostProcessingEffects m_effects;
+    // ---------------- ADDED FOR POST-PROCESSING END ------------------
+
+
+
+
 };

@@ -166,3 +166,36 @@ void Camera::rotateCam(float deltaX, float deltaY){
     initViewMatrices();
 
 }
+
+void Camera::calculateVectorsPlayer(const glm::vec3& upReference){
+    w = glm::normalize(-look); //axes in terms of world space
+    v = glm::normalize(upReference - (glm::dot(upReference, w)* w));
+    u = glm::cross(v,w);
+}
+
+void Camera::followPlayer(glm::mat4& ctm, float dist, float height) {
+    const float SMOOTH_FACTOR = 0.15f;
+
+    // 1. Calculate Target Position (as before)
+    glm::vec3 playerWorldPos = glm::vec3(ctm[3]);
+    glm::vec3 playerForward = glm::normalize(glm::vec3(ctm[2]));
+    glm::vec3 playerBackward = -playerForward;
+
+    glm::vec3 playerLocalUp = glm::normalize(glm::vec3(ctm[1]));
+
+
+    glm::vec3 offset = playerBackward * dist + playerLocalUp * height;
+    glm::vec3 targetPos = playerWorldPos + offset;
+
+    const float targetHeight = .75f;
+    glm::vec3 targetLookAt = playerWorldPos + glm::vec3(0.0f, targetHeight, 0.0f);
+    glm::vec3 targetLook = glm::normalize(targetLookAt - targetPos);
+
+    // 2. LERP (as before)
+    pos = glm::mix(pos, targetPos, SMOOTH_FACTOR);
+    look = glm::normalize(glm::mix(look, targetLook, SMOOTH_FACTOR));
+
+    // 3. Update View Matrix using the player's local up
+    calculateVectorsPlayer(playerLocalUp); // Pass the local up vector
+    initViewMatrices();
+}
