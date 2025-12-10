@@ -1,7 +1,0 @@
-<RCC>
-  <qresource prefix="/">
-    <file alias="resources/shaders/default.frag">/Users/anik/Desktop/cs1230/King-Kais/resources/shaders/default.frag</file>
-    <file alias="resources/shaders/gbuffer.vert">/Users/anik/Desktop/cs1230/King-Kais/resources/shaders/gbuffer.vert</file>
-  </qresource>
-</RCC>
-

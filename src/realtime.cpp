@@ -431,62 +431,6 @@ void Realtime::initializeGL() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     createImage();
-
-
-    /* ---------------- ADDED FOR POST-PROCESSING BEGIN ---------------- */
-
-    /// 1. Load post-processing shader
-    m_texture_shader = ShaderLoader::createShaderProgram(
-        "resources/shaders/texture.vert",
-        "resources/shaders/texture.frag"
-        );
-
-    /// 2. Create post-processing FBO
-    glGenFramebuffers(1, &m_post_fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, m_post_fbo);
-
-    glGenTextures(1, &m_post_color);
-    glBindTexture(GL_TEXTURE_2D, m_post_color);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_width, screen_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_post_color, 0);
-
-    glGenTextures(1, &m_post_depth);
-    glBindTexture(GL_TEXTURE_2D, m_post_depth);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, screen_width, screen_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_post_depth, 0);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    /// 3. Fullscreen quad for post-processing
-    std::vector<GLfloat> pp_quad = {
-        -1.f,  1.f, 0.f,   0.f, 1.f,
-        -1.f, -1.f, 0.f,   0.f, 0.f,
-        1.f, -1.f, 0.f,   1.f, 0.f,
-
-        -1.f,  1.f, 0.f,   0.f, 1.f,
-        1.f, -1.f, 0.f,   1.f, 0.f,
-        1.f,  1.f, 0.f,   1.f, 1.f
-    };
-
-    glGenVertexArrays(1, &m_pp_vao);
-    glGenBuffers(1, &m_pp_vbo);
-
-    glBindVertexArray(m_pp_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, m_pp_vbo);
-    glBufferData(GL_ARRAY_BUFFER, pp_quad.size() * sizeof(GLfloat), pp_quad.data(), GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-    /* ---------------- ADDED FOR POST-PROCESSING END ------------------ */
 }
 
 void Realtime::geometryPass(){
@@ -535,12 +479,7 @@ void Realtime::geometryPass(){
 
 void Realtime::shadingPass(){
 
-    // glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
-
-    /* ---------------- ADDED FOR POST-PROCESSING BEGIN ---------------- */
-    glBindFramebuffer(GL_FRAMEBUFFER, m_post_fbo);
-    /* ---------------- ADDED FOR POST-PROCESSING END ------------------ */
-
+    glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
     glViewport(0, 0, screen_width, screen_height);
     //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //glDisable(GL_DEPTH_TEST);
@@ -671,43 +610,6 @@ void Realtime::paintGL() {
 
     glBindVertexArray(0);
     glUseProgram(0);
-
-
-    /* ---------------- ADDED FOR POST-PROCESSING BEGIN ---------------- */
-
-    // Draw shaded scene through your stylized post-process shader
-    glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
-    glViewport(0, 0, screen_width, screen_height);
-    glDisable(GL_DEPTH_TEST);
-
-    glUseProgram(m_texture_shader);
-
-    // Bind color texture from post-FBO
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, m_post_color);
-    glUniform1i(glGetUniformLocation(m_texture_shader, "colorTexture"), 0);
-
-    // Bind depth texture (if your shader uses it)
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, m_post_depth);
-    glUniform1i(glGetUniformLocation(m_texture_shader, "depthTexture"), 1);
-
-    // Send stylization toggles
-    glUniform1i(glGetUniformLocation(m_texture_shader, "useGrayscale"), m_effects.grayscale);
-    glUniform1i(glGetUniformLocation(m_texture_shader, "useInvert"), m_effects.invert);
-    glUniform1i(glGetUniformLocation(m_texture_shader, "useEdgeDetection"), m_effects.edgeDetection);
-    glUniform1i(glGetUniformLocation(m_texture_shader, "useVignette"), m_effects.vignette);
-    glUniform1i(glGetUniformLocation(m_texture_shader, "useDepthVisualization"), m_effects.depthVisualization);
-    glUniform1i(glGetUniformLocation(m_texture_shader, "usePixelation"), m_effects.pixelation);
-
-    // Draw fullscreen quad
-    glBindVertexArray(m_pp_vao);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
-
-    glUseProgram(0);
-
-    /* ---------------- ADDED FOR POST-PROCESSING END ------------------ */
 }
 
 void Realtime::resizeGL(int w, int h) {
@@ -715,17 +617,6 @@ void Realtime::resizeGL(int w, int h) {
     glViewport(0, 0, size().width() * m_devicePixelRatio, size().height() * m_devicePixelRatio);
 
     // Students: anything requiring OpenGL calls when the program starts should be done here
-    /* ---------------- ADDED FOR POST-PROCESSING BEGIN ---------------- */
-
-    glBindTexture(GL_TEXTURE_2D, m_post_color);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_width, screen_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
-    glBindTexture(GL_TEXTURE_2D, m_post_depth);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, screen_width, screen_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    /* ---------------- ADDED FOR POST-PROCESSING END ------------------ */
 }
 
 void Realtime::sceneChanged() {
@@ -797,19 +688,6 @@ void Realtime::settingsChanged() {
 
 void Realtime::keyPressEvent(QKeyEvent *event) {
     m_keyMap[Qt::Key(event->key())] = true;
-
-    /* ---------------- ADDED FOR POST-PROCESSING BEGIN ---------------- */
-
-    if (event->key() == Qt::Key_Z) { m_effects.depthVisualization ^= 1; update(); }
-    if (event->key() == Qt::Key_E) { m_effects.edgeDetection    ^= 1; update(); }
-    if (event->key() == Qt::Key_G) { m_effects.grayscale        ^= 1; update(); }
-    if (event->key() == Qt::Key_I) { m_effects.invert           ^= 1; update(); }
-    if (event->key() == Qt::Key_V) { m_effects.vignette         ^= 1; update(); }
-    if (event->key() == Qt::Key_P) { m_effects.pixelation       ^= 1; update(); }
-
-    if (event->key() == Qt::Key_C) { m_effects = PostProcessingEffects(); update(); }
-
-    /* ---------------- ADDED FOR POST-PROCESSING END ------------------ */
 
 }
 
