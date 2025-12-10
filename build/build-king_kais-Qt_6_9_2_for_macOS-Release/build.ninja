@@ -209,6 +209,13 @@ build CMakeFiles/StaticGLEW.dir/src/camera.cpp.o: CXX_COMPILER__StaticGLEW_unsca
   OBJECT_DIR = CMakeFiles/StaticGLEW.dir
   OBJECT_FILE_DIR = CMakeFiles/StaticGLEW.dir/src
 
+build CMakeFiles/StaticGLEW.dir/src/tree.cpp.o: CXX_COMPILER__StaticGLEW_unscanned_Release /Users/ericwang/Compsci/cs1230/King-Kais/src/tree.cpp || cmake_object_order_depends_target_StaticGLEW
+  DEP_FILE = CMakeFiles/StaticGLEW.dir/src/tree.cpp.o.d
+  FLAGS = -Wno-deprecated-volatile -O3 -DNDEBUG -std=gnu++20 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -mmacosx-version-min=15.3 -fcolor-diagnostics
+  INCLUDES = -I/Users/ericwang/Compsci/cs1230/King-Kais/build/build-king_kais-Qt_6_9_2_for_macOS-Release -I/Users/ericwang/Compsci/cs1230/King-Kais -I/Users/ericwang/Compsci/cs1230/King-Kais/build/build-king_kais-Qt_6_9_2_for_macOS-Release/StaticGLEW_autogen/include -I/Users/ericwang/Compsci/cs1230/King-Kais/src -I/Users/ericwang/Compsci/cs1230/King-Kais/king_kais -I/Users/ericwang/Compsci/cs1230/King-Kais/PRIVATE -I/Users/ericwang/Compsci/cs1230/King-Kais/glew/include
+  OBJECT_DIR = CMakeFiles/StaticGLEW.dir
+  OBJECT_FILE_DIR = CMakeFiles/StaticGLEW.dir/src
+
 
 # =============================================================================
 # Link build statements for STATIC_LIBRARY target StaticGLEW
@@ -217,7 +224,7 @@ build CMakeFiles/StaticGLEW.dir/src/camera.cpp.o: CXX_COMPILER__StaticGLEW_unsca
 #############################################
 # Link the static library libStaticGLEW.a
 
-build libStaticGLEW.a: CXX_STATIC_LIBRARY_LINKER__StaticGLEW_Release CMakeFiles/StaticGLEW.dir/StaticGLEW_autogen/mocs_compilation.cpp.o CMakeFiles/StaticGLEW.dir/glew/src/glew.c.o CMakeFiles/StaticGLEW.dir/src/camera.cpp.o || StaticGLEW_autogen StaticGLEW_autogen_timestamp_deps
+build libStaticGLEW.a: CXX_STATIC_LIBRARY_LINKER__StaticGLEW_Release CMakeFiles/StaticGLEW.dir/StaticGLEW_autogen/mocs_compilation.cpp.o CMakeFiles/StaticGLEW.dir/glew/src/glew.c.o CMakeFiles/StaticGLEW.dir/src/camera.cpp.o CMakeFiles/StaticGLEW.dir/src/tree.cpp.o || StaticGLEW_autogen StaticGLEW_autogen_timestamp_deps
   ARCH_FLAGS = -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.5.sdk -mmacosx-version-min=15.3
   LANGUAGE_COMPILE_FLAGS = -Wno-deprecated-volatile -O3 -DNDEBUG
   OBJECT_DIR = CMakeFiles/StaticGLEW.dir

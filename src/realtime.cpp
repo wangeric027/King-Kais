@@ -6,6 +6,8 @@
 #include <iostream>
 #include "settings.h"
 #include "utils/shaderloader.h"
+#include <random>
+#include "tree.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -13,6 +15,8 @@
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "utils/tiny_obj_loader.h"
+
+
 
 
 // ================== Rendering the Scene!
@@ -77,7 +81,7 @@ void Realtime::finish() {
 
 std::vector<float> Realtime::createGoku(){
     tinyobj::ObjReaderConfig config;
-    config.mtl_search_path = "";      // or wherever your .mtl lives
+    config.mtl_search_path = "goku";      // or wherever your .mtl lives
     config.triangulate = true;        // make sure everything is triangles
 
     tinyobj::ObjReader reader;
@@ -95,6 +99,7 @@ std::vector<float> Realtime::createGoku(){
 
     const tinyobj::attrib_t &attrib = reader.GetAttrib();
     const std::vector<tinyobj::shape_t> &shapes = reader.GetShapes();
+    const std::vector<tinyobj::material_t> &materials = reader.GetMaterials();
 
     // Our vertex layout: pos(3), normal(3), uv(2) = 8 floats
     std::vector<float> vertexData;
@@ -145,14 +150,16 @@ std::vector<float> Realtime::createGoku(){
 
 
 void Realtime::createImage(){
-    glClearColor(0.0, 0, 0, 0.0);
+
+    std::vector<glm::mat4> tree = Tree::createCTMList(Tree::createTree());
+    glClearColor(0.0, 0, 0, 1.0);
     realtimeShapeList.clear();
     //generates list of buffers, one for each type of shape
     glGenBuffers(5, vboList);
     glGenVertexArrays(5, vaoList);
 
-
     SceneParser::parse(settings.sceneFilePath, metaData);
+
     sceneLightData = metaData.lights;
     globals = metaData.globalData;
 
@@ -210,6 +217,7 @@ void Realtime::createImage(){
 
     //At this point all vbos are initialized and so are all vbos and their sizes.
     // Just need to store each CTM with their shapeType
+    SceneMaterial lastMat;
     for (RenderShapeData &shape: metaData.shapes){
         int enumAsInt = static_cast<int>(shape.primitive.type);
         RealtimeShapeInfo shapeInfo = RealtimeShapeInfo{enumAsInt, shape.ctm, shape.primitive.material, shape.name};
@@ -228,6 +236,7 @@ void Realtime::createImage(){
         }
         std::cout << shapeInfo.groupName << std::endl;
         realtimeShapeList.push_back(shapeInfo);
+        lastMat = shape.primitive.material;
     }
 
     for (RealtimeShapeInfo &shapeInfo: realtimeShapeList) {
@@ -237,13 +246,15 @@ void Realtime::createImage(){
         if (shapeInfo.groupName == "Planet") {
             m_planet= &shapeInfo;
         }
-
     }
 
-    //we now have a list of all shapes with their ctm, and vertices
+    for (glm::mat4 ctm : tree){
+        RealtimeShapeInfo branch = RealtimeShapeInfo{2, ctm, lastMat, "branch"};
+        realtimeShapeList.push_back(branch);
+    }
+
     createFBO();
     createBackground();
-
     createGoku();
 }
 
@@ -438,8 +449,10 @@ void Realtime::geometryPass(){
     glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(geom_shader);
-
     for (RealtimeShapeInfo &realtimeShape : realtimeShapeList) { //binds
+
+
+
         glm::mat4 modelMVP = cam.getProjMatrix() * cam.getViewMatrix() * realtimeShape.ctm;
         glm::mat4 normalMatrix = inverse(transpose(glm::mat3(realtimeShape.ctm)));
 
@@ -472,6 +485,7 @@ void Realtime::geometryPass(){
         glDrawArrays(GL_TRIANGLES, 0, sizeList[realtimeShape.shapeType]);
     }
 
+
     glBindVertexArray(0);
     glUseProgram(0);
 }
@@ -484,13 +498,7 @@ void Realtime::shadingPass(){
     //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     //glDisable(GL_DEPTH_TEST);
 
-    //glEnable(GL_BLEND);
-    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_CONSTANT_ALPHA);
     glUseProgram(deferred_shader);
-
-
-
-
 
     GLint locPos  = glGetUniformLocation(deferred_shader, "gPosition");
     GLint locNorm = glGetUniformLocation(deferred_shader, "gNormal");

@@ -662,6 +662,12 @@
 			"MU",
 			"UVLADIE3JM/moc_camera.cpp",
 			null
+		],
+		[
+			"/Users/ericwang/Compsci/cs1230/King-Kais/src/tree.h",
+			"MU",
+			"UVLADIE3JM/moc_tree.cpp",
+			null
 		]
 	],
 	"HEADER_EXTENSIONS" : [ "h", "hh", "h++", "hm", "hpp", "hxx", "in", "txx" ],
@@ -730,7 +736,8 @@
 			"MU",
 			null
 		],
-		[ "/Users/ericwang/Compsci/cs1230/King-Kais/src/camera.cpp", "MU", null ]
+		[ "/Users/ericwang/Compsci/cs1230/King-Kais/src/camera.cpp", "MU", null ],
+		[ "/Users/ericwang/Compsci/cs1230/King-Kais/src/tree.cpp", "MU", null ]
 	],
 	"UIC_OPTIONS" : [],
 	"UIC_SEARCH_PATHS" : [],

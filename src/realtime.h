@@ -96,6 +96,8 @@ private:
     GLuint skyboxVBO;
     GLuint skyboxEBO;
     GLuint cubemapTexture;
+    void buildTreeAt(const glm::vec3 &rootPos,
+                     const glm::vec3 &rootUp);
 
     Cube cube;
     Sphere sphere;

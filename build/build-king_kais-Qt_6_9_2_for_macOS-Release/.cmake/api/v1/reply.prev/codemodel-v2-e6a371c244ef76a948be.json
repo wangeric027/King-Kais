@@ -1,0 +1,130 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1
+					],
+					"jsonFile" : "directory-.-Release-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6
+					]
+				},
+				{
+					"build" : "glm",
+					"jsonFile" : "directory-glm-Release-2bef2a2728e6bac3f360.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "glm"
+				}
+			],
+			"name" : "Release",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1
+					],
+					"name" : "king_kais",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "StaticGLEW::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-StaticGLEW-Release-17cd51a716ac019630de.json",
+					"name" : "StaticGLEW",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "StaticGLEW_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-StaticGLEW_autogen-Release-093cfd289b3edf53ddbd.json",
+					"name" : "StaticGLEW_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "StaticGLEW_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-StaticGLEW_autogen_timestamp_deps-Release-ec299a01de5c465de223.json",
+					"name" : "StaticGLEW_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "king_kais::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-king_kais-Release-43b09bde9c1c543d0127.json",
+					"name" : "king_kais",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "king_kais_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-king_kais_autogen-Release-461301b803b1d53f6b53.json",
+					"name" : "king_kais_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "king_kais_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-king_kais_autogen_timestamp_deps-Release-a0a342d60d6fdfa0961d.json",
+					"name" : "king_kais_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "king_kais_other_files::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-king_kais_other_files-Release-9790d5817782898d4981.json",
+					"name" : "king_kais_other_files",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/Users/ericwang/Compsci/cs1230/King-Kais/build/build-king_kais-Qt_6_9_2_for_macOS-Release",
+		"source" : "/Users/ericwang/Compsci/cs1230/King-Kais"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}
