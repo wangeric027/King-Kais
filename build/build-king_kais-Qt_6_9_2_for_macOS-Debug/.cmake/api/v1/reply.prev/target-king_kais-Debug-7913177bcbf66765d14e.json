@@ -347,7 +347,7 @@
 				10,
 				11,
 				26,
-				28
+				27
 			]
 		}
 	],
@@ -358,11 +358,11 @@
 			"id" : "StaticGLEW::@6890427a1f51a3e7e1df"
 		},
 		{
-			"id" : "king_kais_autogen_timestamp_deps::@6890427a1f51a3e7e1df"
-		},
-		{
 			"backtrace" : 0,
 			"id" : "king_kais_autogen::@6890427a1f51a3e7e1df"
+		},
+		{
+			"id" : "king_kais_autogen_timestamp_deps::@6890427a1f51a3e7e1df"
 		}
 	],
 	"id" : "king_kais::@6890427a1f51a3e7e1df",
@@ -485,7 +485,7 @@
 				10,
 				11,
 				26,
-				28
+				27
 			]
 		},
 		{
@@ -512,16 +512,15 @@
 			"name" : "",
 			"sourceIndexes" : 
 			[
-				27,
-				29
+				28
 			]
 		},
 		{
 			"name" : "CMake Rules",
 			"sourceIndexes" : 
 			[
-				30,
-				31
+				29,
+				30
 			]
 		}
 	],
@@ -675,11 +674,6 @@
 			"compileGroupIndex" : 0,
 			"path" : "src/rigidbody.cpp",
 			"sourceGroupIndex" : 0
-		},
-		{
-			"backtrace" : 1,
-			"path" : "resources/shaders/texture.frag",
-			"sourceGroupIndex" : 2
 		},
 		{
 			"backtrace" : 26,

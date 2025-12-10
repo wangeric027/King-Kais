@@ -142,11 +142,11 @@
 	"dependencies" : 
 	[
 		{
-			"id" : "StaticGLEW_autogen_timestamp_deps::@6890427a1f51a3e7e1df"
-		},
-		{
 			"backtrace" : 0,
 			"id" : "StaticGLEW_autogen::@6890427a1f51a3e7e1df"
+		},
+		{
+			"id" : "StaticGLEW_autogen_timestamp_deps::@6890427a1f51a3e7e1df"
 		}
 	],
 	"id" : "StaticGLEW::@6890427a1f51a3e7e1df",
@@ -262,12 +262,12 @@
 		},
 		{
 			"backtrace" : 1,
-			"path" : "resources/shaders/texture.vert",
+			"path" : "resources/shaders/texture.frag",
 			"sourceGroupIndex" : 2
 		},
 		{
 			"backtrace" : 1,
-			"path" : "texture.frag",
+			"path" : "resources/shaders/texture.vert",
 			"sourceGroupIndex" : 2
 		},
 		{

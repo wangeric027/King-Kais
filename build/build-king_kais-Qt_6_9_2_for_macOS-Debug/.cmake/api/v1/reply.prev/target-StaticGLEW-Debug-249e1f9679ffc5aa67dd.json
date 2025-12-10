@@ -261,7 +261,7 @@
 		},
 		{
 			"backtrace" : 1,
-			"path" : "resources/shaders/texture.vert",
+			"path" : "resources/shaders/texture.frag",
 			"sourceGroupIndex" : 2
 		},
 		{
