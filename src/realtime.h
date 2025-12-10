@@ -38,12 +38,15 @@ struct PostProcessingEffects {
     bool vignette = false;
     bool depthVisualization = false;
     bool pixelation = false;
+    bool toonShading = false;
+    int lutIndex = 0;
 };
 // ---------------- ADDED FOR POST-PROCESSING END ------------------
 
 class Realtime : public QOpenGLWidget
 {
 public:
+    GLuint loadLUT(const std::string& filepath);
     Realtime(QWidget *parent = nullptr);
     void finish();                                      // Called on program exit
     void sceneChanged();
@@ -152,6 +155,10 @@ private:
     // For drawing the fullscreen quad
     GLuint m_pp_vbo;
     GLuint m_pp_vao;
+
+    // LUT textures for color grading - ADD THESE
+    GLuint m_lut_textures[3];  // For 3 different LUTs
+    int m_current_lut = 0;     // 0 = no LUT, 1-3 = LUT index
 
     // Current effect toggles
     PostProcessingEffects m_effects;

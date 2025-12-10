@@ -1,11 +1,10 @@
-
 #version 330 core
-
 in vec2 uv;
 out vec4 fragColor;
 
 uniform sampler2D colorTexture;
 uniform sampler2D depthTexture;
+uniform sampler3D lutTexture;
 uniform vec2 texelSize;
 
 // Effect toggles
@@ -15,8 +14,10 @@ uniform bool useEdgeDetection;
 uniform bool useVignette;
 uniform bool useDepthVisualization;
 uniform bool usePixelation;
+uniform bool useToonShading;
+uniform int lutIndex;
 
-// Edge detection (Sobel) -> only one that needed its own because everything is simple
+// Edge detection (Sobel)
 float detectEdge(vec2 uv, vec2 texelSize) {
     float tl = length(texture(colorTexture, uv + vec2(-texelSize.x,  texelSize.y)).rgb);
     float t  = length(texture(colorTexture, uv + vec2( 0.0,          texelSize.y)).rgb);
@@ -29,49 +30,81 @@ float detectEdge(vec2 uv, vec2 texelSize) {
 
     float sobelX = -tl - 2.0*l - bl + tr + 2.0*r + br;
     float sobelY = -tl - 2.0*t - tr + bl + 2.0*b + br;
-
     return sqrt(sobelX * sobelX + sobelY * sobelY);
 }
 
+// Toon shading
+vec3 toonShade(vec3 color) {
+    float intensity = dot(color, vec3(0.299, 0.587, 0.114));
+
+    float quantized;
+    if (intensity > 0.8) quantized = 1.0;
+    else if (intensity > 0.5) quantized = 0.7;
+    else if (intensity > 0.3) quantized = 0.4;
+    else quantized = 0.2;
+
+    vec3 normalizedColor = color / max(intensity, 0.001);
+    return normalizedColor * quantized;
+}
+
+// LUT
+vec3 applyLUT(vec3 color) {
+    // Clamp color to [0, 1] range
+    color = clamp(color, 0.0, 1.0);
+    // Sample the 3D LUT texture
+    return texture(lutTexture, color).rgb;
+}
+
 void main() {
+    // Determine which UV to use (pixelated or normal)
+    vec2 sampleUV = uv;
+
+    if (usePixelation) {
+        float pixelSize = 8.0;
+        sampleUV = floor(uv / (texelSize * pixelSize)) * (texelSize * pixelSize);
+    }
+
     vec3 color;
 
-    // Start with either depth or color
+    // Start with either depth or color (using the correct UV)
     if (useDepthVisualization) {
-        float depth = texture(depthTexture, uv).r;
+        float depth = texture(depthTexture, sampleUV).r;
         depth = pow(depth, 50.0);
         color = vec3(depth);
     } else {
-        color = texture(colorTexture, uv).rgb;
+        color = texture(colorTexture, sampleUV).rgb;
     }
 
-    // Apply effects
+    // Apply effects in order
 
-    //0. Pixelation - added this last
-    if (usePixelation) {
-        float pixelSize = 8.0;  // this will affect size of pixels 8 is good
-        vec2 pixelUV = floor(uv / (texelSize * pixelSize)) * (texelSize * pixelSize);
-        color = texture(colorTexture, pixelUV).rgb;
+    // 1. Toon Shading
+    if (useToonShading) {
+        color = toonShade(color);
     }
 
-    // 1. Edge detection
+    // 2. LUT Color Grading
+    if (lutIndex > 0) {
+        color = applyLUT(color);
+    }
+
+    // 3. Edge detection
     if (useEdgeDetection) {
-        float edge = detectEdge(uv, texelSize);
+        float edge = detectEdge(sampleUV, texelSize);
         color = color * (1.0 - edge);
     }
 
-    // 2. Grayscale
+    // 4. Grayscale
     if (useGrayscale) {
         float gray = dot(color, vec3(0.299, 0.587, 0.114));
         color = vec3(gray);
     }
 
-    // 3. Invert
+    // 5. Invert
     if (useInvert) {
         color = 1.0 - color;
     }
 
-    // 4. Vignette - Stylized to get that oldish burnt edges look
+    // 6. Vignette
     if (useVignette) {
         vec2 center = uv - 0.5;
         float dist = length(center);

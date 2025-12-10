@@ -18,6 +18,61 @@
 
 
 
+GLuint Realtime::loadLUT(const std::string& filepath) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open LUT file: " << filepath << std::endl;
+        return 0;
+    }
+
+    int lutSize = 0;
+    std::vector<float> lutData;
+    std::string line;
+
+    // Parse .cube file
+    while (std::getline(file, line)) {
+        // Skip comments and empty lines
+        if (line.empty() || line[0] == '#') continue;
+
+        if (line.find("LUT_3D_SIZE") != std::string::npos) {
+            sscanf(line.c_str(), "LUT_3D_SIZE %d", &lutSize);
+            continue;
+        }
+
+        float r, g, b;
+        if (sscanf(line.c_str(), "%f %f %f", &r, &g, &b) == 3) {
+            lutData.push_back(r);
+            lutData.push_back(g);
+            lutData.push_back(b);
+        }
+    }
+
+    file.close();
+
+    if (lutSize == 0 || lutData.empty()) {
+        std::cerr << "Invalid LUT data in: " << filepath << std::endl;
+        return 0;
+    }
+
+    // Create 3D texture
+    GLuint lutTexture;
+    glGenTextures(1, &lutTexture);
+    glBindTexture(GL_TEXTURE_3D, lutTexture);
+
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB16F, lutSize, lutSize, lutSize, 0, GL_RGB, GL_FLOAT, lutData.data());
+
+    glBindTexture(GL_TEXTURE_3D, 0);
+
+    std::cout << "Loaded LUT: " << filepath << " (size: " << lutSize << ")" << std::endl;
+    return lutTexture;
+}
+
 
 // ================== Rendering the Scene!
 
@@ -78,6 +133,9 @@ void Realtime::finish() {
     depth_shader = 0;
     glDeleteProgram(geoBufferShader);
     geoBufferShader = 0;
+
+    glDeleteTextures(3, m_lut_textures);
+
     this->doneCurrent();
 }
 
@@ -500,6 +558,11 @@ void Realtime::initializeGL() {
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    //LUT
+    m_lut_textures[0] = loadLUT("resources/LUT/Ancient_Orange.cube");
+    m_lut_textures[1] = loadLUT("resources/LUT/LushGreen.cube");
+    m_lut_textures[2] = loadLUT("resources/LUT/OrangeAndBlue.cube");
+
     /* ---------------- ADDED FOR POST-PROCESSING END ------------------ */
 }
 
@@ -690,6 +753,12 @@ glActiveTexture(GL_TEXTURE1);
 glBindTexture(GL_TEXTURE_2D, depthTexture);
 glUniform1i(glGetUniformLocation(m_texture_shader, "depthTexture"), 1);
 
+if (m_effects.lutIndex > 0 && m_effects.lutIndex <= 3) {
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_3D, m_lut_textures[m_effects.lutIndex - 1]);
+    glUniform1i(glGetUniformLocation(m_texture_shader, "lutTexture"), 2);
+}
+
 
 //texel size for pixelation
 glUniform2f(glGetUniformLocation(m_texture_shader, "texelSize"), 1.0f / screen_width, 1.0f / screen_height);
@@ -701,6 +770,9 @@ glUniform1i(glGetUniformLocation(m_texture_shader, "useEdgeDetection"), m_effect
 glUniform1i(glGetUniformLocation(m_texture_shader, "useVignette"), m_effects.vignette);
 glUniform1i(glGetUniformLocation(m_texture_shader, "useDepthVisualization"), m_effects.depthVisualization);
 glUniform1i(glGetUniformLocation(m_texture_shader, "usePixelation"), m_effects.pixelation);
+glUniform1i(glGetUniformLocation(m_texture_shader, "useToonShading"), m_effects.toonShading);
+
+glUniform1i(glGetUniformLocation(m_texture_shader, "lutIndex"), m_effects.lutIndex);
 
 // Draw fullscreen quad
 glBindVertexArray(m_pp_vao);
@@ -827,7 +899,15 @@ void Realtime::keyPressEvent(QKeyEvent *event) {
     if (event->key() == Qt::Key_I) { m_effects.invert           ^= 1; update(); }
     if (event->key() == Qt::Key_V) { m_effects.vignette         ^= 1; update(); }
     if (event->key() == Qt::Key_P) { m_effects.pixelation       ^= 1; update(); }
+    if (event->key() == Qt::Key_T) { m_effects.toonShading      ^= 1; update(); }
     if (event->key() == Qt::Key_C) { m_effects = PostProcessingEffects(); update(); }
+
+
+    if (event->key() == Qt::Key_L) {
+        m_effects.lutIndex = (m_effects.lutIndex + 1) % 4;  // 0, 1, 2, 3, 0, ...
+        std::cout << "LUT Index: " << m_effects.lutIndex << std::endl;
+        update();
+    }
 }
 
 void Realtime::keyReleaseEvent(QKeyEvent *event) {
