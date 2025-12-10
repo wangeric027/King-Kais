@@ -542,6 +542,8 @@ void Realtime::geometryPass(){
 
         glBindVertexArray(vaoList[realtimeShape.shapeType]);
         glDrawArrays(GL_TRIANGLES, 0, sizeList[realtimeShape.shapeType]);
+
+        glDeleteTextures(2, materialPropertyTextures);
     }
 
 
@@ -554,7 +556,10 @@ void Realtime::shadingPass(){
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_post_fbo);
     glViewport(0, 0, screen_width, screen_height);
-    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    //uncommented this
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
     //glDisable(GL_DEPTH_TEST);
 
     glUseProgram(deferred_shader);
@@ -628,11 +633,13 @@ void Realtime::shadingPass(){
 }
 
 void Realtime::backgroundPass(){
-    //glBindFramebuffer(GL_FRAMEBUFFER, default_fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_post_fbo); //this was uncommented and changed to m_post_fbo
     glViewport(0, 0, screen_width, screen_height);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(skyboxShader);
     glDisable(GL_CULL_FACE);
+
+    glDepthMask(GL_FALSE);      // NEW — prevents skybox from overwriting shading
 
     GLint shaderLoc = glGetUniformLocation(skyboxShader, "skybox");
     glUniform1i(shaderLoc, 0);
@@ -656,6 +663,9 @@ void Realtime::backgroundPass(){
     glDepthFunc(GL_LESS);
     glEnable(GL_CULL_FACE);
 
+    //added this
+    glDepthMask(GL_TRUE);
+
 }
 
 void Realtime::ppPass(){
@@ -677,8 +687,12 @@ glUniform1i(glGetUniformLocation(m_texture_shader, "colorTexture"), 0);
 
 // Bind depth texture (if your shader uses it)
 glActiveTexture(GL_TEXTURE1);
-glBindTexture(GL_TEXTURE_2D, m_post_depth);
+glBindTexture(GL_TEXTURE_2D, depthTexture);
 glUniform1i(glGetUniformLocation(m_texture_shader, "depthTexture"), 1);
+
+
+//texel size for pixelation
+glUniform2f(glGetUniformLocation(m_texture_shader, "texelSize"), 1.0f / screen_width, 1.0f / screen_height);
 
 // Send stylization toggles
 glUniform1i(glGetUniformLocation(m_texture_shader, "useGrayscale"), m_effects.grayscale);
@@ -693,12 +707,13 @@ glBindVertexArray(m_pp_vao);
 glDrawArrays(GL_TRIANGLES, 0, 6);
 glBindVertexArray(0);
 glBindTexture(GL_TEXTURE_2D, m_post_color);
-glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_width, screen_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_width, screen_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
 glBindTexture(GL_TEXTURE_2D, m_post_depth);
-glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, screen_width, screen_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+// glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, screen_width, screen_height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
 glBindTexture(GL_TEXTURE_2D, 0);
+glEnable(GL_DEPTH_TEST);
 // / ---------------- ADDED FOR POST-PROCESSING END ------------------ */
 
 }
@@ -710,10 +725,11 @@ void Realtime::paintGL() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-    backgroundPass();
+    // backgroundPass();
 
     geometryPass();
     shadingPass();
+    backgroundPass();
     ppPass();
 
 
