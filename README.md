@@ -114,5 +114,26 @@ Included LUTs:
 
 ---
 
-## 🔥 **Full Rendering Pipeline**
+## 🎮 **Controls**
+
+### Movement
+| Key | Action |
+|-----|---------|
+| Up / Down | Move Goku |
+| Left / Right | Rotate Goku / Rotate Camera (No Strafing)|
+
+### Post-Processing Toggles
+| Key | Effect |
+|-----|--------|
+| **T** | Toon shading |
+| **E** | Edge detection |
+| **G** | Grayscale |
+| **I** | Invert colors |
+| **V** | Vignette |
+| **P** | Pixelation |
+| **Z** | Depth visualization |
+| **L** | Cycle LUT modes |
+| **C** | Clear all effects |
+
+---
 
