@@ -893,11 +893,12 @@ void Realtime::spawnAuraParticles() {
         // Blue aura colors with variation
         float blueTint = 0.7f + ((rand() % 100) / 300.0f);
         p.color = glm::vec4(
-            0.2f,                           // Low red
-            0.4f + ((rand() % 100) / 500.0f), // Medium green
-            blueTint,                        // High blue
-            0.8f                            // Semi-transparent
+            0.7f + ((rand() % 100) / 500.0f), // Dominant red
+            0.2f + ((rand() % 100) / 700.0f), // Slight orange warmth
+            0.05f + ((rand() % 100) / 1000.0f), // Hint of blue
+            0.8f
             );
+
 
         p.life = 0.5f + ((rand() % 100) / 100.0f);  // 1-2 seconds
         p.size = 10.0f + ((rand() % 100) / 10.0f);
@@ -1324,7 +1325,9 @@ void Realtime::timerEvent(QTimerEvent *event) {
         }
         cam.followPlayer(m_player->ctm, CAMERA_DISTANCE, CAMERA_HEIGHT);
     }
-    updateParticles(deltaTime);
+    if (settings.extraCredit2) {
+        updateParticles(deltaTime);
+    }
     update(); // asks for a PaintGL() call to occur
 }
 
