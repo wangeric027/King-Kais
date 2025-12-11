@@ -23,6 +23,27 @@ It combines graphics programming, physics, and stylized aesthetics into a cohesi
 ## 🌀 **Major Features**
 
 ---
+### 🕳️ **Depth Buffers**
+
+Depth buffers ensure correct occlusion and ordering of 3D objects.  
+
+- Depth testing guarantees nearer fragments overwrite farther ones  
+
+---
+
+### 🧱 **G-Buffers (Geometry Buffers)**
+
+The engine implements a multi-attachment G-buffer for deferred shading:
+
+- `gPosition` → world-space positions  
+- `gNormal` → world-space normals  
+- `gDiffuse` → albedo + roughness information  
+- `gSpec` → specular reflectance  
+- `depthTexture` → precise depth data  
+
+During the geometry pass, each pixel writes material and geometric attributes into these buffers.  
+This enables lighting to occur entirely in screen space, decoupling geometry from shading and allowing multiple dynamic lights at low cost.
+
 
 ### 🔷 **Deferred Rendering (G-Buffer Architecture)**
 
@@ -83,6 +104,21 @@ Inspired by Super Mario Galaxies Traversal system, we replicated it for Goku:
 - Camera follow system wraps around the planet smoothly  
 
 ---
+### 🤖 **Rigid Body Translations**
+
+The engine uses a simplified rigid body model for player movement and object motion:
+
+- Each object stores velocity, mass, and positional state  
+- Collision correction keeps Goku above the planetary surface  
+- Rigid bodies interact seamlessly with the rendering pipeline  
+
+---
+
+### 🗿 **OBJ Loader**
+
+- Uses **TinyOBJLoader** to import Goku’s 3D model.
+
+---
 
 ### 🎨 **Stylized Post-Processing Pipeline**
 
@@ -103,7 +139,7 @@ A fullscreen shader applies real-time stylized effects:
 
 ### 🎛 **3D LUT Color Grading (Anime Color Modes)**
 
-The engine loads `.cube` LUTs and applies color remapping.
+We used standard `.cube` LUT files for color grading, but wrote a custom parser to load the LUT data and convert it into a 3D texture usable by our post-processing shader.
 
 Included LUTs:
 
